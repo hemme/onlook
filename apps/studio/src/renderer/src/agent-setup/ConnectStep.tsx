@@ -8,12 +8,12 @@ import { OnboardingShell } from '../onboarding/OnboardingShell.js';
 import { canContinue, skipsDetectedSetup } from './gate.js';
 import { sendTelemetry } from '../canvas/telemetry.js';
 import { TILE_GLYPHS } from './glyphs.js';
-import { claudeTileState, codexTileState } from '../agents/mapping.js';
+import { claudeTileState, codexTileState, glmTileState } from '../agents/mapping.js';
 import { SetupDialogHost, setupStrings } from './SetupDialogHost.js';
 import { useAgentSetupStore, type AgentSetupState } from './store.js';
 import { useSettingsStore } from '../settings/store.js';
 
-export type ConnectFacts = Pick<AgentSetupState, 'claude' | 'claudeSettled' | 'codex' | 'codexSignInAttempted' | 'touched'>;
+export type ConnectFacts = Pick<AgentSetupState, 'claude' | 'claudeSettled' | 'codex' | 'glm' | 'codexSignInAttempted' | 'touched'>;
 
 interface ConnectFooterProps {
   hasBack?: boolean;
@@ -36,7 +36,8 @@ export function ConnectStepView({ facts, isContinueEnabled: enabled, onTap, onCo
   const split = aside !== undefined;
   const claudeTile = claudeTileState(facts);
   const codexTile = codexTileState(facts);
-  const hasChoice = [claudeTile, codexTile].filter((tile) => markFor(tile) === 'connected').length > 1;
+  const glmTile = glmTileState(facts);
+  const hasChoice = [claudeTile, codexTile, glmTile].filter((tile) => markFor(tile) === 'connected').length > 1;
   const preference = (harness: HarnessId): { isPreferred?: boolean; onMakePreferred?: () => void } =>
     !split || !hasChoice ? {} : { isPreferred: preferred === harness, ...(onMakePreferred ? { onMakePreferred: () => onMakePreferred(harness) } : {}) };
   return (
@@ -51,7 +52,8 @@ export function ConnectStepView({ facts, isContinueEnabled: enabled, onTap, onCo
           style={split ? { flexDirection: 'column', border: '0.5px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' } : undefined}>
           <HarnessTile tile={claudeTile} strings={strings} glyphs={TILE_GLYPHS} onSelect={() => onTap('claude')} {...preference('claude')} layout={split ? 'row' : 'tile'} testId="onboarding-tile-claude" />
           <HarnessTile tile={codexTile} strings={strings} glyphs={TILE_GLYPHS} onSelect={() => onTap('codex')} {...preference('codex')} layout={split ? 'row' : 'tile'} hasDivider={split} testId="onboarding-tile-codex" />
-          <HarnessTile tile={{ kind: 'coming-soon', id: 'opencode' }} strings={strings} glyphs={TILE_GLYPHS} layout={split ? 'row' : 'tile'} hasDivider={split} testId="onboarding-tile-coming-soon-opencode" />
+          <HarnessTile tile={glmTile} strings={strings} glyphs={TILE_GLYPHS} onSelect={() => onTap('glm')} {...preference('glm')} layout={split ? 'row' : 'tile'} hasDivider={split} testId="onboarding-tile-glm" />
+          <HarnessTile tile={{ kind: 'coming-soon', id: 'other' }} strings={strings} glyphs={TILE_GLYPHS} layout={split ? 'row' : 'tile'} hasDivider={split} testId="onboarding-tile-coming-soon-other" />
           <HarnessTile tile={{ kind: 'coming-soon', id: 'other' }} strings={strings} glyphs={TILE_GLYPHS} layout={split ? 'row' : 'tile'} hasDivider={split} testId="onboarding-tile-coming-soon-other" />
         </HStack>
       </VStack>
@@ -76,6 +78,7 @@ export function ConnectStep({ entryPoint, onContinue, hasBack, onBack, onSkip, a
   const claude = useAgentSetupStore((s) => s.claude);
   const claudeSettled = useAgentSetupStore((s) => s.claudeSettled);
   const codex = useAgentSetupStore((s) => s.codex);
+  const glm = useAgentSetupStore((s) => s.glm);
   const codexSignInAttempted = useAgentSetupStore((s) => s.codexSignInAttempted);
   const touched = useAgentSetupStore((s) => s.touched);
   const [open, setOpen] = useState<HarnessId | null>(null);
@@ -87,15 +90,17 @@ export function ConnectStep({ entryPoint, onContinue, hasBack, onBack, onSkip, a
     (harness: HarnessId): void => {
       if (skipsDetectedSetup(useAgentSetupStore.getState(), harness)) sendTelemetry({ event: 'agent_setup_skipped', properties: { provider: harness, entry_point: entryPoint } });
       setOpen(harness);
-      const { tapClaude, tapCodex } = useAgentSetupStore.getState();
-      void (harness === 'claude' ? tapClaude(entryPoint) : tapCodex());
+      const { tapClaude, tapCodex, tapGlm } = useAgentSetupStore.getState();
+      void (harness === 'claude' ? tapClaude(entryPoint) : harness === 'glm' ? tapGlm() : tapCodex());
     },
     [entryPoint],
   );
   const close = useCallback((): void => setOpen(null), []);
 
-  const facts: ConnectFacts = { claude, claudeSettled, codex, codexSignInAttempted, touched };
-  const connected = (['claude', 'codex'] as const).filter((harness) => markFor(harness === 'claude' ? claudeTileState(facts) : codexTileState(facts)) === 'connected');
+  const facts: ConnectFacts = { claude, claudeSettled, codex, glm, codexSignInAttempted, touched };
+  const connected = (['claude', 'codex', 'glm'] as const).filter((harness) =>
+    markFor(harness === 'claude' ? claudeTileState(facts) : harness === 'glm' ? glmTileState(facts) : codexTileState(facts)) === 'connected',
+  );
   const firstConnected = connected[0];
   useEffect(() => {
     if (first === undefined && firstConnected !== undefined) setFirst(firstConnected);

@@ -132,6 +132,7 @@ export interface TelemetrySuperProperties {
 type AgentSetupOutcome =
   | 'ok'
   | 'invalid_code'
+  | 'invalid_key'
   | 'rejected'
   | 'failed'
   | 'timeout'
@@ -391,21 +392,21 @@ export interface TelemetryEventMap {
   project_setup_approval_withheld: {
     project_id?: string;
     tool: 'save_project_setup' | 'run_project_setup';
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
   };
 
   /** Studio sent a setup prompt that opens the setup checklist; where it drew is the renderer's to say (ONL-2913). */
   setup_steps_shown: {
     project_id: string;
     agent_session_id: string;
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
   };
 
   /** The turn that drew the checklist ended. Step numbers and the outcome only, never the failure's text (ONL-2913). */
   setup_steps_ended: {
     project_id: string;
     agent_session_id: string;
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     outcome: 'done' | 'failed' | 'incomplete';
     failed_step?: 1 | 2 | 3 | 4;
   };
@@ -422,7 +423,7 @@ export interface TelemetryEventMap {
   preview_recovery_pressed: Forwarded<'preview_recovery_pressed'>;
   connector_action: Forwarded<'connector_action'>;
   connector_menu_opened: {
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     source: 'plug' | 'add-menu' | 'notice';
     inventory_known: boolean;
     connector_count: number;
@@ -431,7 +432,7 @@ export interface TelemetryEventMap {
     failed_count: number;
   };
   connector_inventory_observed: {
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     inventory_known: boolean;
     connector_count: number;
     needs_sign_in_count: number;
@@ -443,20 +444,20 @@ export interface TelemetryEventMap {
   };
   connector_connection_started: {
     attempt_id: string;
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     action: 'add' | 'sign-in' | 'retry' | 'manage-externally';
     connector: 'figma' | 'mobbin' | 'other';
   };
   connector_connection_finished: {
     attempt_id: string;
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     action: 'add' | 'sign-in' | 'retry' | 'manage-externally';
     connector: 'figma' | 'mobbin' | 'other';
     outcome: 'connected' | 'failed' | 'opened' | 'cancelled';
     failure_category?: 'integration' | 'server' | 'authorization' | 'timeout' | 'cancelled' | 'unknown';
   };
   connector_tool_used: {
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     connector: 'figma' | 'mobbin' | 'other';
     connection_state: import('@studio/events').ConnectorState | 'unknown';
   };
@@ -892,7 +893,7 @@ export interface TelemetryEventMap {
   rate_limit_card_shown: Forwarded<'rate_limit_card_shown'>;
 
   agent_setup_step: {
-    provider: 'claude' | 'codex';
+    provider: 'claude' | 'codex' | 'glm';
     step:
       | 'opened'
       | 'sign_in_started'
@@ -903,7 +904,8 @@ export interface TelemetryEventMap {
       | 'fallback'
       | 'cancelled'
       | 'install_started'
-      | 'skipped';
+      | 'skipped'
+      | 'key_saved';
     browser_choice?: 'default' | 'other';
     outcome?: AgentSetupOutcome;
     entry_point: 'onboarding' | 'editor' | 'settings' | 'startup' | 'unknown';
@@ -912,7 +914,7 @@ export interface TelemetryEventMap {
 
   /** `setting: 'harness'` is the default agent itself moving; `'model'` is that harness's own model or effort default. `model` and `effort` ride only in the enumerated-id shape. */
   agent_default_changed: {
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     setting: 'harness' | 'model';
     model?: string;
     effort?: string;
@@ -953,7 +955,7 @@ export interface TelemetryEventMap {
   /** Only a confirmed start records; a cancelled one records nothing (ONL-2198). */
   chat_new_started: {
     project_id: string;
-    harness: 'claude' | 'codex';
+    harness: 'claude' | 'codex' | 'glm';
     /** Turns in the chat being left, never zero: an empty chat refuses before it records. */
     turn_count: number;
   };
@@ -961,8 +963,8 @@ export interface TelemetryEventMap {
   /** Only a switch that started the other agent records; a refused one records nothing (ONL-2903). */
   chat_agent_switched: {
     project_id: string;
-    from_harness: 'claude' | 'codex';
-    to_harness: 'claude' | 'codex';
+    from_harness: 'claude' | 'codex' | 'glm';
+    to_harness: 'claude' | 'codex' | 'glm';
     /** Where it was chosen: the model menu, or the action on a failed turn's row (ONL-2612). */
     entry_point: 'menu' | 'failure';
   };
@@ -1111,7 +1113,7 @@ export interface TelemetryEventMap {
   };
 
   agent_setup_completed: {
-    provider: 'claude' | 'codex';
+    provider: 'claude' | 'codex' | 'glm';
     success: true;
     entry_point: TelemetryEventMap['agent_setup_step']['entry_point'];
     outcome?: AgentSetupOutcome;

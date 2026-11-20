@@ -72,9 +72,10 @@ export function findModelChoice(
   );
 }
 
-export type HarnessId = 'claude' | 'codex';
+/** `glm` rides the Claude CLI against Z.ai's Anthropic-compatible endpoint, so it is picked like a provider but stored apart. */
+export type HarnessId = 'claude' | 'codex' | 'glm';
 
-export const HARNESS_IDS = ['claude', 'codex'] as const satisfies readonly HarnessId[];
+export const HARNESS_IDS = ['claude', 'codex', 'glm'] as const satisfies readonly HarnessId[];
 
 export function isHarnessId(value: unknown): value is HarnessId {
   return HARNESS_IDS.some((id) => id === value);

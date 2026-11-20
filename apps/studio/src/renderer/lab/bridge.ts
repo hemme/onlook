@@ -40,6 +40,7 @@ const agentStateListeners = new Set<Parameters<StudioBridge['onAgentState']>[0]>
 const LAB_SETTINGS_DEFAULTS: SettingsDefaults = {
   claude: { models: [] },
   codex: { models: [] },
+  glm: { models: [] },
 };
 
 const noop = (): void => {};
@@ -254,6 +255,9 @@ const answers: Omit<StudioBridge, Inert> & Partial<Pick<StudioBridge, Inert>> = 
   updateStatus: async () => IDLE_UPDATE_STATE,
 
   codexStatus: async () => IDLE_CODEX_SETUP_STATE,
+  glmStatus: async () => ({ status: 'no-key' }),
+  glmSaveKey: async () => ({ status: 'ready', model: 'glm-5.3' }),
+  glmClearKey: async () => ({ status: 'no-key' }),
   codexInstall: async () => ({ accepted: false }),
   codexSignIn: async () => ({ accepted: false }),
   codexSignInCancel: async () => {},

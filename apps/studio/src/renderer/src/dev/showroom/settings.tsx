@@ -13,6 +13,7 @@ import {
   IDLE_CLAUDE_SETUP_STATE,
   DEFAULT_NOTIFICATIONS,
   IDLE_CODEX_SETUP_STATE,
+  IDLE_GLM_SETUP_STATE,
   type EffortLevel,
   type HarnessId,
   type ModelChoice,
@@ -63,7 +64,7 @@ function SignInStill({ readiness, mode }: { readiness: Readiness; mode: 'default
   }, [id, mode]);
   return <div ref={root} data-settings-sign-in={mode}>
     <style>{'[data-settings-sign-in="hover"] [data-testid="settings-agent-setup"] { background-image: linear-gradient(var(--color-overlay-hover), var(--color-overlay-hover)); } [data-settings-sign-in="focus"] [data-testid="settings-agent-setup"] { outline: 2px solid var(--color-accent); outline-offset: var(--button-focus-offset); }'}</style>
-    <LiveRow initial="claude" readiness={{ claude: readiness, codex: 'ready' }} />
+    <LiveRow initial="claude" readiness={{ claude: readiness, codex: 'ready', glm: 'ready' }} />
   </div>;
 }
 
@@ -190,9 +191,10 @@ const SHEET_FACTS: SetupDialogFacts = {
   claude: IDLE_CLAUDE_SETUP_STATE,
   claudeSettled: undefined,
   codex: IDLE_CODEX_SETUP_STATE,
+  glm: IDLE_GLM_SETUP_STATE,
   code: '',
   codexSignInAttempted: false,
-  inFlight: { claude: NOT_IN_FLIGHT, codex: NOT_IN_FLIGHT },
+  inFlight: { claude: NOT_IN_FLIGHT, codex: NOT_IN_FLIGHT, glm: NOT_IN_FLIGHT },
 };
 
 /* The rise is the modal's entrance, so a still would catch it mid-flight; hover and focus are states no fixture can hold. */
@@ -268,7 +270,7 @@ const CATEGORIES: Category[] = [
     stories: [{
       id: 'settings-analytics-general',
       title: 'General Settings',
-      render: () => <SettingsPane agent="codex" readiness={{ claude: 'ready', codex: 'ready' }} onAgentChange={noop} onSetUp={noop} notifications={{ preference: DEFAULT_NOTIFICATIONS, onAction: noop }} analytics={{ value: true, onChange: noop }} />,
+      render: () => <SettingsPane agent="codex" readiness={{ claude: 'ready', codex: 'ready', glm: 'ready' }} onAgentChange={noop} onSetUp={noop} notifications={{ preference: DEFAULT_NOTIFICATIONS, onAction: noop }} analytics={{ value: true, onChange: noop }} />,
     }, ...[true, false].flatMap((value) => (['default', 'hover', 'focus', 'saving', 'error'] as const).map((state) => ({
       id: `settings-analytics-${value ? 'on' : 'off'}-${state}`,
       title: `${value ? 'On' : 'Off'} ${state}`,

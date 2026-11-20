@@ -10,8 +10,8 @@ import type {
   WelcomeProject,
 } from '@studio/events';
 
-/** Which SDK ran the session, not which product the user picked — `HarnessId` is that. */
-export type SessionHarness = 'claude' | 'appserver';
+/** Which SDK ran the session, not which product the user picked — `HarnessId` is that. GLM runs the Claude SDK, keyed apart so its models and login never answer for Claude's. */
+export type SessionHarness = 'claude' | 'appserver' | 'glm';
 
 export type ModelPick = { accepted: true } | { accepted: false; refusal?: ModelRefusal };
 

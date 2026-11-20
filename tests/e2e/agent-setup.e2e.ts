@@ -17,11 +17,11 @@ import { addCodebaseFromFolder, claudeShimFor, closeStudio, editorPage, FIRST_RU
 const target = (process.env['STUDIO_TARGET'] ?? 'build') as Target;
 
 const tile = (page: Page, harness: HarnessId) =>
-  page.getByTestId(harness === 'claude' ? TESTID.onboardingTileClaude : TESTID.onboardingTileCodex);
+  page.getByTestId(harness === 'claude' ? TESTID.onboardingTileClaude : harness === 'glm' ? TESTID.onboardingTileGlm : TESTID.onboardingTileCodex);
 // A row opens setup only from its end button, the last one in the row.
 const open = (page: Page, harness: HarnessId) => tile(page, harness).getByRole('button').last().click();
 const dialog = (page: Page, harness: HarnessId) =>
-  page.getByTestId(harness === 'claude' ? TESTID.onboardingDialogClaude : TESTID.onboardingDialogCodex);
+  page.getByTestId(harness === 'claude' ? TESTID.onboardingDialogClaude : harness === 'glm' ? TESTID.onboardingDialogGlm : TESTID.onboardingDialogCodex);
 const action = (page: Page, name: string) => page.getByTestId(`${TESTID.setupActionPrefix}${name}`);
 const paste = (page: Page) => page.getByTestId(`${TESTID.signInActionPrefix}paste`);
 

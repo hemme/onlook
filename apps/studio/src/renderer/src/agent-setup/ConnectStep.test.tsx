@@ -32,7 +32,7 @@ test('a preferred agent is saved to Settings and passed to the next onboarding s
   seedAgentSetupForShowroom({
     claude: { status: 'signed-in', command: CLAUDE_LOGIN_COMMAND, email: 'designer@onlook.test' },
     codex: { status: 'ready', email: 'designer@onlook.test' },
-    touched: { claude: true, codex: true },
+    touched: { claude: true, codex: true, glm: false },
   });
   container = document.createElement('div');
   document.body.appendChild(container);

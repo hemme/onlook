@@ -22,6 +22,7 @@ const SPIN = { display: 'flex', animation: 'frame-reload-turn 900ms linear infin
 export const TILE_GLYPHS: TileGlyphs = {
   claude: glyph(ClaudeMarkIcon),
   codex: glyph(OpenAiMarkIcon),
+  glm: glyph(AiProvidersIcon),
   opencode: glyph(OpenCodeMarkIcon),
   other: glyph(AiProvidersIcon),
   star: <IconStar size={16} />,
@@ -42,6 +43,7 @@ export const TILE_GLYPHS: TileGlyphs = {
 export const CARD_GLYPHS: CardGlyphs = {
   claude: glyph(ClaudeMarkIcon, 'sm'),
   codex: glyph(OpenAiMarkIcon, 'sm'),
+  glm: glyph(AiProvidersIcon, 'sm'),
   spinner: (
     <span style={SPIN}>
       <GlyphLoadingCircle width={18} height={18} />

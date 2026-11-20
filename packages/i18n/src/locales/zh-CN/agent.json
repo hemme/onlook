@@ -1,5 +1,6 @@
 {
   "agent.card.comingSoon": "即将推出",
   "agent.name.claude": "Claude",
-  "agent.name.codex": "ChatGPT"
+  "agent.name.codex": "ChatGPT",
+  "agent.name.glm": "GLM"
 }

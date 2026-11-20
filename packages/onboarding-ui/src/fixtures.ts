@@ -3,9 +3,9 @@ import type { OnboardingUiStrings } from './strings.js';
 
 /** The copy is the board's, verbatim. */
 export const STUB_STRINGS: OnboardingUiStrings = {
-  harnessName: { claude: 'Claude', codex: 'ChatGPT' },
-  setUp: { claude: 'Set up Claude', codex: 'Set up ChatGPT' },
-  subscription: { claude: 'Claude subscription', codex: 'ChatGPT subscription' },
+  harnessName: { claude: 'Claude', codex: 'ChatGPT', glm: 'GLM' },
+  setUp: { claude: 'Set up Claude', codex: 'Set up ChatGPT', glm: 'Set up GLM' },
+  subscription: { claude: 'Claude subscription', codex: 'ChatGPT subscription', glm: 'GLM API key' },
   manage: 'Manage',
   preferred: 'Default',
   makePreferred: 'Make default',
@@ -33,6 +33,14 @@ export const STUB_STRINGS: OnboardingUiStrings = {
       'out-of-date': 'Out of date',
       fallback: 'Sign-in failed',
     },
+    glm: {
+      'no-key': 'No API key',
+      checking: 'Checking it works…',
+      saving: 'Saving…',
+      'invalid-key': 'Key refused',
+      connected: 'Connected',
+      'cannot-connect': 'Could not connect',
+    },
   },
   dialogTitle: {
     claude: {
@@ -55,6 +63,14 @@ export const STUB_STRINGS: OnboardingUiStrings = {
       'wont-start': 'The ChatGPT agent downloaded but will not start',
       'out-of-date': 'The ChatGPT agent on this computer is older than Onlook needs',
       fallback: 'Finish signing in from the Terminal',
+    },
+    glm: {
+      'no-key': 'Add your GLM API key',
+      checking: 'Checking the key',
+      saving: 'Saving the key',
+      'invalid-key': 'That key was refused',
+      connected: 'GLM is ready',
+      'cannot-connect': 'GLM could not be reached',
     },
   },
   dialogBody: {
@@ -82,8 +98,16 @@ export const STUB_STRINGS: OnboardingUiStrings = {
       fallback:
         'Copy the line below, paste it into Terminal, and press Return. Come back here when ChatGPT says you are signed in.',
     },
+    glm: {
+      'no-key': 'Paste your Z.ai API key. It is stored in this Mac’s keychain.',
+      checking: 'Onlook is checking the key answers.',
+      saving: 'Saving the key.',
+      'invalid-key': 'Z.ai refused that key. Check it and paste it again.',
+      connected: 'The key works. GLM models are ready to chat.',
+      'cannot-connect': 'Onlook could not reach Z.ai. Check your connection.',
+    },
   },
-  dialogHeader: { claude: 'Set up Claude', codex: 'Set up ChatGPT' },
+  dialogHeader: { claude: 'Set up Claude', codex: 'Set up ChatGPT', glm: 'Set up GLM' },
   action: {
     'set-up': 'Set up ChatGPT',
     'sign-in': 'Sign in',
@@ -106,6 +130,7 @@ export const STUB_STRINGS: OnboardingUiStrings = {
   chatLine: {
     claude: 'Please sign in to Claude to continue designing in Onlook',
     codex: 'Please sign in to ChatGPT to continue designing in Onlook',
+    glm: 'Please add a GLM API key to continue designing in Onlook',
   },
   chatSignedIn: 'Signed in as {email}',
   mark: { attention: 'Needs you', connected: 'Connected' },
@@ -117,12 +142,13 @@ export const STUB_STRINGS: OnboardingUiStrings = {
   chooseBrowser: 'Choose a browser',
   runtimeMissingTitle: 'Claude couldn’t start',
   otherAgent: {
-    label: { claude: 'Use Claude instead', codex: 'Use ChatGPT instead' },
+    label: { claude: 'Use Claude instead', codex: 'Use ChatGPT instead', glm: 'Use GLM instead' },
     needs: {
       claude: 'Needs a Claude Pro or Max plan. You sign in once in your browser.',
       codex: 'Needs a ChatGPT plan. Onlook downloads its agent and you sign in.',
+      glm: 'Needs a Z.ai API key. You paste it once.',
     },
-    ready: { claude: 'Claude is set up on this Mac.', codex: 'ChatGPT is set up on this Mac.' },
+    ready: { claude: 'Claude is set up on this Mac.', codex: 'ChatGPT is set up on this Mac.', glm: 'GLM is set up on this Mac.' },
     setUp: 'Set up',
     use: 'Use',
   },

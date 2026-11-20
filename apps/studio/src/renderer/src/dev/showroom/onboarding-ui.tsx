@@ -183,15 +183,17 @@ const CONNECT_FACTS: Record<'none' | 'both', ConnectFacts> = {
     claude: { status: 'idle', command: CLAUDE_LOGIN_COMMAND },
     claudeSettled: undefined,
     codex: { status: 'idle' },
+    glm: { status: 'no-key' },
     codexSignInAttempted: false,
-    touched: { claude: false, codex: false },
+    touched: { claude: false, codex: false, glm: false },
   },
   both: {
     claude: { status: 'signed-in', email: FIXTURE_EMAIL, plan: 'max', command: CLAUDE_LOGIN_COMMAND },
     claudeSettled: undefined,
     codex: { status: 'ready', email: FIXTURE_EMAIL, plan: 'plus' },
+    glm: { status: 'ready' },
     codexSignInAttempted: false,
-    touched: { claude: true, codex: true },
+    touched: { claude: true, codex: true, glm: true },
   },
 };
 
@@ -203,7 +205,7 @@ function ConnectScreen({ facts }: { facts: ConnectFacts }): React.JSX.Element {
 /** Seeded before the step mounts, so the first render is already over the store. */
 function LiveConnectStep(): React.JSX.Element {
   useState(() => {
-    seedAgentSetupForShowroom({ ...CONNECT_FACTS.both, touched: { claude: false, codex: false } });
+    seedAgentSetupForShowroom({ ...CONNECT_FACTS.both, touched: { claude: false, codex: false, glm: false } });
     return true;
   });
   return <ConnectStep entryPoint="onboarding" onContinue={noop} />;
@@ -310,7 +312,9 @@ function chatStory(harness: HarnessId, label: string, id: string, state: SetupSt
 }
 
 function chatStories(harness: HarnessId, label: string, fixtures: Record<string, SetupState>): Story[] {
-  return CHAT_CARD_STATES[harness].map((id) => chatStory(harness, label, id, fixtures[id]!));
+  const states = CHAT_CARD_STATES[harness];
+  if (states === undefined) return [];
+  return states.map((id) => chatStory(harness, label, id, fixtures[id]!));
 }
 
 const chat: Category = {

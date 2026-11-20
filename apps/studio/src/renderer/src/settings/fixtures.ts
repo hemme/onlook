@@ -27,6 +27,10 @@ export const READINESS_FIXTURES: Record<ReadinessFixtureId, ReadinessFixture> = 
 };
 
 export const MODEL_CATALOGS: Record<HarnessId, readonly ModelChoice[]> = {
+  glm: [
+    { value: 'glm-5.3', displayName: 'GLM-5.3 Max' },
+    { value: 'glm-5.3-flash', displayName: 'GLM-5.3 Flash' },
+  ],
   claude: [
     { value: 'opus', resolvedModel: 'claude-opus-4-1', displayName: 'Claude Opus 4.1', supportedEffortLevels: ['low', 'medium', 'high', 'max'] },
     { value: 'sonnet', resolvedModel: 'claude-sonnet-4-5', displayName: 'Claude Sonnet 4.5', supportedEffortLevels: ['low', 'medium', 'high'] },

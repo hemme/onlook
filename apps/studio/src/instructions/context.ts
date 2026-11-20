@@ -69,6 +69,7 @@ const SHARED_WRITER_DIRECTIVE =
 const HARNESS_REFUSES_A_STALE_EDIT: Record<HarnessId, boolean> = {
   claude: true,
   codex: false,
+  glm: true,
 };
 
 export function sharedWriterNotice(harness: HarnessId | undefined): string {
@@ -89,6 +90,7 @@ const DESTRUCTIVE_GIT_DIRECTIVE =
 const HARNESS_ENFORCES_DESTRUCTIVE_GATE: Record<HarnessId, boolean> = {
   claude: true,
   codex: false,
+  glm: true,
 };
 
 function destructiveGitConsent(harness: HarnessId | undefined): string {

@@ -19,6 +19,8 @@ interface HarnessFacts {
   grantsFollowProviderThread: boolean;
   /** A drafted skill attachment is kept only with the path it was read from. */
   skillsCarryPath: boolean;
+  /** The CLI stamps its own attribution trailer on the commits the agent writes. */
+  commitAttribution: boolean;
 }
 
 export const HARNESSES = {
@@ -33,6 +35,7 @@ export const HARNESSES = {
     countsRetryAttempts: true,
     grantsFollowProviderThread: false,
     skillsCarryPath: false,
+    commitAttribution: true,
   },
   codex: {
     id: 'codex',
@@ -45,14 +48,29 @@ export const HARNESSES = {
     countsRetryAttempts: false,
     grantsFollowProviderThread: true,
     skillsCarryPath: true,
+    commitAttribution: false,
+  },
+  // GLM is the Claude SDK pointed at Z.ai: every fact about how that SDK behaves carries over.
+  glm: {
+    id: 'glm',
+    stored: 'glm',
+    telemetry: 'glm',
+    executable: 'claude',
+    processClass: 'claude_cli',
+    pdfAttachments: true,
+    reportsPromptChars: true,
+    countsRetryAttempts: true,
+    grantsFollowProviderThread: false,
+    skillsCarryPath: false,
+    commitAttribution: false,
   },
 } as const satisfies Record<HarnessId, HarnessFacts>;
 
 export type Harness = (typeof HARNESSES)[HarnessId];
 
-const ALL = [HARNESSES.claude, HARNESSES.codex] as const;
+const ALL = [HARNESSES.claude, HARNESSES.codex, HARNESSES.glm] as const;
 
-export const STORED_HARNESSES = [HARNESSES.claude.stored, HARNESSES.codex.stored] as const;
+export const STORED_HARNESSES = [HARNESSES.claude.stored, HARNESSES.codex.stored, HARNESSES.glm.stored] as const;
 
 /** A name no Harness answers to reads as Claude, as an absent choice does (ONL-2120). */
 export function harnessFor(id: HarnessId): Harness {

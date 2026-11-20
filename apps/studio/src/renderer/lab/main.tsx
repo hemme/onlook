@@ -74,7 +74,7 @@ if (LAB_AGENTS === 'claude' || LAB_AGENTS === 'both') {
   seedAgentSetupForShowroom({
     claude: { status: 'signed-in', email: 'designer@example.com', plan: 'max', command: CLAUDE_LOGIN_COMMAND },
     ...(LAB_AGENTS === 'both' ? { codex: { status: 'ready' as const, email: 'designer@example.com', plan: 'plus' } } : {}),
-    touched: { claude: true, codex: LAB_AGENTS === 'both' },
+    touched: { claude: true, codex: LAB_AGENTS === 'both', glm: false },
   });
 }
 

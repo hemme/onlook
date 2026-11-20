@@ -8,6 +8,8 @@ export interface AskMethod {
 const ASK_METHOD: Record<HarnessId, AskMethod> = {
   claude: { tool: 'AskUserQuestion' },
   codex: { tool: 'request_user_input' },
+  // GLM rides the Claude CLI, so it asks the same way.
+  glm: { tool: 'AskUserQuestion' },
 };
 
 export function askMethod(harness: HarnessId | undefined): AskMethod {

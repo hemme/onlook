@@ -10,7 +10,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { HARNESS_IDS, findModelChoice, modelLabel, type EffortLevel, type HarnessId, type ModelChoice, type SettingsState } from '@studio/events';
 import { effortLabel } from '../chat/composerControls.js';
 import { t } from '@studio/i18n';
-import { ClaudeMarkIcon, OpenAiMarkIcon, modelMarkIcon } from '../icons/glyphs.js';
+import { AiProvidersIcon, ClaudeMarkIcon, OpenAiMarkIcon, modelMarkIcon } from '../icons/glyphs.js';
 import { offersSetUp, type Readiness } from './readiness.js';
 
 export const SETTINGS_TESTIDS = {
@@ -210,6 +210,8 @@ function agentName(harness: HarnessId): string {
       return t('agent.name.claude');
     case 'codex':
       return t('agent.name.codex');
+    case 'glm':
+      return t('agent.name.glm');
   }
 }
 
@@ -243,7 +245,7 @@ export function DefaultAgentRow({ value, readiness, onChange, onSetUp, billingLa
   const options = HARNESS_IDS.map((harness) => ({
     value: harness,
     label: agentName(harness),
-    icon: harness === 'codex' ? OpenAiMarkIcon : ClaudeMarkIcon,
+    icon: harness === 'codex' ? OpenAiMarkIcon : harness === 'glm' ? AiProvidersIcon : ClaudeMarkIcon,
   }));
   const control = (
     /* Stacked, not inline: inline narrows the label column enough to wrap the

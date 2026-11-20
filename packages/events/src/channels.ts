@@ -123,6 +123,7 @@ import type { DebugAgentFrames, DebugAgentFramesRequest, DebugCaptureFrame, Debu
 import type { CaptureViewAnswer, CaptureViewRequest } from './capture-view.js';
 import type { CodexSetupState } from './codex.js';
 import type { ClaudeSetupState, ClaudeStatusRequest, SetupEntryPoint } from './claude-setup.js';
+import type { GlmSetupState } from './glm-setup.js';
 import type { UpdateState } from './update.js';
 import type {
   BlankCreateResult,
@@ -229,6 +230,10 @@ export const CHANNELS = {
     claudeOpenPageAgain: { name: 'claude:openPageAgain', from: TAB, request: none, response: of<{ accepted: boolean }>(), tab: 'claudeOpenPageAgain' },
     claudeSubmitCode: { name: 'claude:submitCode', from: TAB, request: one<{ code: string }>(), response: of<{ accepted: boolean }>(), tab: 'claudeSubmitCode' },
     claudeSignInCancel: { name: 'claude:signInCancel', from: TAB, request: none, response: of<void>(), tab: 'claudeSignInCancel' },
+    /** GLM has no login child: the key is validated by one provider request, never by driving a session. */
+    glmStatus: { name: 'glm:status', from: TAB, request: optional<{ fresh?: boolean }>(), response: of<GlmSetupState>(), tab: 'glmStatus' },
+    glmSaveKey: { name: 'glm:saveKey', from: TAB, request: one<{ key: string }>(), response: of<GlmSetupState>(), tab: 'glmSaveKey' },
+    glmClearKey: { name: 'glm:clearKey', from: TAB, request: none, response: of<GlmSetupState>(), tab: 'glmClearKey' },
     openTerminal: { name: 'app:openTerminal', from: TAB, request: none, response: of<void>(), tab: 'openTerminal' },
     /** In main: the renderer's clipboard API needs a focused document, which a driven window lacks. */
     readClipboardText: { name: 'app:readClipboardText', from: TAB, request: none, response: of<{ text: string }>(), tab: 'readClipboardText' },
@@ -412,6 +417,7 @@ export const CHANNELS = {
     updateState: { name: 'update:state', payload: of<UpdateState>(), tab: 'onUpdateState', chrome: 'onUpdateState' },
     codexState: { name: 'codex:state', payload: of<CodexSetupState>(), tab: 'onCodexState' },
     claudeState: { name: 'claude:state', payload: of<ClaudeSetupState>(), tab: 'onClaudeState' },
+    glmState: { name: 'glm:state', payload: of<GlmSetupState>(), tab: 'onGlmState' },
     authChanged: { name: 'auth:changed', payload: of<StudioIdentity>(), tab: 'onAuthChanged' },
     telemetryIdentityChanged: { name: 'telemetry:identity-changed', payload: of<TelemetryConfig>(), tab: 'onTelemetryIdentityChanged' },
     workspacesChanged: { name: 'workspaces:changed', payload: of<WorkspaceSummary[]>(), tab: 'onWorkspacesChanged' },

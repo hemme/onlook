@@ -57,7 +57,7 @@ export function classifyAttachmentBytes(bytes: Uint8Array, agent: HarnessId):
   const raster = sniffMediaType(bytes);
   if (raster !== null) return { ok: true, mediaType: raster };
   if (bytes.length >= 5 && String.fromCharCode(...bytes.subarray(0, 5)) === '%PDF-') {
-    return agent === 'claude' ? { ok: true, mediaType: 'application/pdf' } : { ok: false, reason: 'pdf-unsupported' };
+    return agent === 'claude' || agent === 'glm' ? { ok: true, mediaType: 'application/pdf' } : { ok: false, reason: 'pdf-unsupported' };
   }
   let text: string;
   try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }

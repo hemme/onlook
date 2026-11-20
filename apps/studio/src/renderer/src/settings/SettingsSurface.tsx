@@ -52,9 +52,10 @@ export function SettingsSurface(): React.JSX.Element {
   const claudeDetail = useAgentSetupStore((s) => s.claude.detail);
   const claudePlan = useAgentSetupStore((s) => s.claude.plan ?? s.claudeSettled?.plan);
   const codexStatus = useAgentSetupStore((s) => s.codex.status);
+  const glmStatus = useAgentSetupStore((s) => s.glm.status);
   const readiness = useMemo(
-    () => readinessByHarness(claudeStatus, codexStatus, claudeDetail),
-    [claudeStatus, codexStatus, claudeDetail],
+    () => readinessByHarness(claudeStatus, codexStatus, glmStatus, claudeDetail),
+    [claudeStatus, codexStatus, glmStatus, claudeDetail],
   );
   const selected = useMemo(() => selectedDefaults(defaults, harness), [defaults, harness]);
   const [open, setOpen] = useState<HarnessId | null>(null);

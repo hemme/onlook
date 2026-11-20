@@ -1,4 +1,4 @@
-import { type ClaudeSetupDetail, type ClaudeSetupStatus, claudeDetailNeedsSignIn, type CodexSetupStatus, type HarnessId } from '@studio/events';
+import { type ClaudeSetupDetail, type ClaudeSetupStatus, claudeDetailNeedsSignIn, type CodexSetupStatus, type GlmSetupStatus, type HarnessId } from '@studio/events';
 
 export type Readiness = 'ready' | 'not-installed' | 'not-signed-in' | 'sign-in-incomplete' | 'needs-attention' | 'checking';
 
@@ -64,12 +64,32 @@ export function codexReadiness(status: CodexSetupStatus): Readiness {
   }
 }
 
+/** A key is either stored and working, or it is not: GLM's readiness has no install or browser leg. */
+export function glmReadiness(glm: GlmSetupStatus): Readiness {
+  switch (glm) {
+    case 'ready':
+      return 'ready';
+    case 'checking':
+    case 'saving':
+      return 'checking';
+    case 'no-key':
+      return 'not-signed-in';
+    case 'invalid-key':
+      return 'needs-attention';
+    case 'error':
+      return 'needs-attention';
+    default:
+      return unknownStatus(glm);
+  }
+}
+
 export function readinessByHarness(
   claude: ClaudeSetupStatus,
   codex: CodexSetupStatus,
+  glm: GlmSetupStatus = 'no-key',
   claudeDetail?: ClaudeSetupDetail,
 ): Record<HarnessId, Readiness> {
-  return { claude: claudeReadiness(claude, claudeDetail), codex: codexReadiness(codex) };
+  return { claude: claudeReadiness(claude, claudeDetail), codex: codexReadiness(codex), glm: glmReadiness(glm) };
 }
 
 export function offersSetUp(readiness: Readiness): boolean {

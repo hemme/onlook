@@ -4,7 +4,7 @@ export type { OnboardingUiStrings, PerHarnessCopy } from './strings.js';
 export { pickCopy } from './strings.js';
 export { HarnessTile } from './HarnessTile.js';
 export type { HarnessTileProps, TileGlyphs } from './HarnessTile.js';
-export { SignInCard } from './SignInCard.js';
+export { SignInCard, fieldFor } from './SignInCard.js';
 export type { CardGlyphs, SignInCardProps } from './SignInCard.js';
 export { canStartSignIn, isSetAsideable, SignInNotice } from './SignInNotice.js';
 export type { SignInNoticeProps } from './SignInNotice.js';

@@ -2,15 +2,17 @@ import { create } from 'zustand';
 import {
   IDLE_CLAUDE_SETUP_STATE,
   IDLE_CODEX_SETUP_STATE,
+  IDLE_GLM_SETUP_STATE,
   type ClaudeSetupState,
   type ClaudeStatusRequest,
   type CodexSetupState,
+  type GlmSetupState,
   type HarnessId,
   type SetupEntryPoint,
   CODE_MAX_LENGTH,
   sanitizeCode,
 } from '@studio/events';
-import { isClaudeConnected, isCodexConnected } from '../agents/mapping.js';
+import { isClaudeConnected, isCodexConnected, isGlmConnected } from '../agents/mapping.js';
 import { studio } from '../bridge.js';
 
 export interface HarnessFlight {
@@ -35,6 +37,7 @@ export interface AgentSetupState {
   claude: ClaudeSetupState;
   claudeSettled: ClaudeSetupState | undefined;
   codex: CodexSetupState;
+  glm: GlmSetupState;
   code: string;
   codexSignInAttempted: boolean;
   touched: Record<HarnessId, boolean>;
@@ -59,6 +62,11 @@ interface AgentSetupStore extends AgentSetupState {
   signInCodex: (entryPoint?: SetupEntryPoint, browserId?: string) => Promise<void>;
   cancelCodex: () => Promise<void>;
   checkCodex: () => Promise<void>;
+  applyGlm: (next: GlmSetupState, viaTap?: boolean) => void;
+  tapGlm: () => Promise<void>;
+  saveGlmKey: (key: string) => Promise<void>;
+  clearGlmKey: () => Promise<void>;
+  checkGlm: () => Promise<void>;
   resetTouched: () => void;
   prime: () => Promise<void>;
 }
@@ -79,12 +87,13 @@ const INITIAL: AgentSetupState = {
   claude: IDLE_CLAUDE_SETUP_STATE,
   claudeSettled: undefined,
   codex: IDLE_CODEX_SETUP_STATE,
+  glm: IDLE_GLM_SETUP_STATE,
   code: '',
   codexSignInAttempted: false,
-  touched: { claude: false, codex: false },
+  touched: { claude: false, codex: false, glm: false },
   lastConnected: null,
-  requests: { claude: IDLE_REQUESTS, codex: IDLE_REQUESTS },
-  inFlight: { claude: IDLE_FLIGHT, codex: IDLE_FLIGHT },
+  requests: { claude: IDLE_REQUESTS, codex: IDLE_REQUESTS, glm: IDLE_REQUESTS },
+  inFlight: { claude: IDLE_FLIGHT, codex: IDLE_FLIGHT, glm: IDLE_FLIGHT },
 };
 
 function nextLastConnected(
@@ -278,14 +287,72 @@ export const useAgentSetupStore = create<AgentSetupStore>()((set, get) => {
       return installCodex('check');
     },
 
+    applyGlm: (next, viaTap = false) => {
+      set((state) => ({
+        glm: next,
+        requests: { ...state.requests, glm: { ...state.requests.glm, revision: state.requests.glm.revision + 1 } },
+        lastConnected: nextLastConnected(state, 'glm', isGlmConnected(state.glm), isGlmConnected(next), viaTap),
+      }));
+    },
+
+    tapGlm: async () => {
+      set((state) => ({ touched: { ...state.touched, glm: true } }));
+      const request = start('glm', 'detect');
+      try {
+        const next = await studio().glmStatus({});
+        if (ownsReply('glm', request)) get().applyGlm(next, true);
+      } catch {
+        return;
+      } finally {
+        finish('glm', request);
+      }
+    },
+
+    saveGlmKey: async (key) => {
+      const request = start('glm', 'submit');
+      try {
+        const next = await studio().glmSaveKey({ key });
+        if (ownsReply('glm', request)) get().applyGlm(next);
+      } catch {
+        return;
+      } finally {
+        finish('glm', request);
+      }
+    },
+
+    clearGlmKey: async () => {
+      const request = start('glm');
+      try {
+        const next = await studio().glmClearKey();
+        if (ownsReply('glm', request)) get().applyGlm(next);
+      } catch {
+        return;
+      } finally {
+        finish('glm', request);
+      }
+    },
+
+    checkGlm: async () => {
+      const request = start('glm', 'check');
+      try {
+        const next = await studio().glmStatus({ fresh: true });
+        if (ownsReply('glm', request)) get().applyGlm(next);
+      } catch {
+        return;
+      } finally {
+        finish('glm', request);
+      }
+    },
+
     resetTouched: () => {
       invalidate('claude');
       invalidate('codex');
-      set({ touched: { claude: false, codex: false }, lastConnected: null, code: '', codexSignInAttempted: false });
+      invalidate('glm');
+      set({ touched: { claude: false, codex: false, glm: false }, lastConnected: null, code: '', codexSignInAttempted: false });
     },
 
     prime: async () => {
-      await Promise.all([detectClaude({}, undefined, false), detectCodex(undefined, false)]);
+      await Promise.all([detectClaude({}, undefined, false), detectCodex(undefined, false), get().checkGlm()]);
     },
   };
 });
@@ -298,16 +365,20 @@ export function primeAgentSetup(): Promise<void> {
 }
 
 export function subscribeToAgentSetup(): () => void {
-  const { applyClaude, applyCodex } = useAgentSetupStore.getState();
+  const { applyClaude, applyCodex, applyGlm } = useAgentSetupStore.getState();
   const offClaude = studio().onClaudeState((state) => {
     applyClaude(state);
   });
   const offCodex = studio().onCodexState((state) => {
     applyCodex(state);
   });
+  const offGlm = studio().onGlmState((state) => {
+    applyGlm(state);
+  });
   return () => {
     offClaude();
     offCodex();
+    offGlm();
   };
 }
 

@@ -2,7 +2,7 @@
 
 import { tmpdir } from 'node:os';
 import { isBillingFailure, type AgentConnection, type AgentConnectionStatus, type AgentProbeRequest } from '@studio/events';
-import { userEnv } from '../env/shell-env.js';
+import { userEnv, type Env } from '../env/shell-env.js';
 import { claudeExecutablePath } from './cli-path.js';
 import { devSwitches } from '../env/dev-switches.js';
 
@@ -61,7 +61,7 @@ function pinnedConnection(): AgentConnection | undefined {
  * a first prompt) and cannot see an invalid login; a bad executable path throws
  * well inside the grace period.
  */
-export async function probeConnection(graceMs = 2_500): Promise<AgentConnection> {
+export async function probeConnection(graceMs = 2_500, providerEnv?: Env): Promise<AgentConnection> {
   const pinned = pinnedConnection();
   if (pinned) return pinned;
 
@@ -69,7 +69,7 @@ export async function probeConnection(graceMs = 2_500): Promise<AgentConnection>
   const { query } = await import('@anthropic-ai/claude-agent-sdk');
 
   // `userEnvSync()` here answers `cli_missing` under a Finder launch that beats the login-shell capture (ONL-1948).
-  const env = await userEnv();
+  const env = providerEnv ?? await userEnv();
 
   const abort = new AbortController();
   // oxlint-disable-next-line eslint/require-yield

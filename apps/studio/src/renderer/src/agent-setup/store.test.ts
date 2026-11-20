@@ -5,6 +5,7 @@ import {
   type ClaudeSetupVerdict,
   type ClaudeStatusRequest,
   type CodexSetupState,
+  type GlmSetupState,
 } from '@studio/events';
 import {
   primeAgentSetup,
@@ -25,8 +26,10 @@ function fakeBridge(): {
   install: () => void;
   emitClaude: (state: ClaudeSetupState) => void;
   emitCodex: (state: CodexSetupState) => void;
+  emitGlm: (state: GlmSetupState) => void;
   answerClaude: (state: ClaudeSetupState) => Promise<void>;
   answerCodex: (state: CodexSetupState) => Promise<void>;
+  answerGlm: (state: GlmSetupState) => Promise<void>;
   answerSubmit: () => Promise<void>;
   answerSignIn: () => Promise<void>;
   claudeRequests: ClaudeStatusRequest[];
@@ -37,8 +40,10 @@ function fakeBridge(): {
 } {
   let claudeListener: ((state: ClaudeSetupState) => void) | undefined;
   let codexListener: ((state: CodexSetupState) => void) | undefined;
+  let glmListener: ((state: GlmSetupState) => void) | undefined;
   const pendingClaude: Array<(state: ClaudeSetupState) => void> = [];
   const pendingCodex: Array<(state: CodexSetupState) => void> = [];
+  const pendingGlm: Array<(state: GlmSetupState) => void> = [];
   const pendingSubmit: Array<() => void> = [];
   const pendingSignIn: Array<() => void> = [];
   const claudeRequests: ClaudeStatusRequest[] = [];
@@ -56,6 +61,10 @@ function fakeBridge(): {
       codexListener = listener;
       return () => {};
     },
+    onGlmState(listener: (state: GlmSetupState) => void): () => void {
+      glmListener = listener;
+      return () => {};
+    },
     claudeStatus(req: ClaudeStatusRequest = {}): Promise<ClaudeSetupState> {
       claudeRequests.push(req);
       calls.push('claudeStatus');
@@ -64,6 +73,18 @@ function fakeBridge(): {
     codexStatus(): Promise<CodexSetupState> {
       calls.push('codexStatus');
       return new Promise((resolve) => pendingCodex.push(resolve));
+    },
+    glmStatus(): Promise<GlmSetupState> {
+      calls.push('glmStatus');
+      return new Promise((resolve) => pendingGlm.push(() => resolve({ status: 'no-key' })));
+    },
+    glmSaveKey(): Promise<GlmSetupState> {
+      calls.push('glmSaveKey');
+      return Promise.resolve({ status: 'no-key' });
+    },
+    glmClearKey(): Promise<GlmSetupState> {
+      calls.push('glmClearKey');
+      return Promise.resolve({ status: 'no-key' });
     },
     claudeSignIn(request: { entryPoint: string; browserId?: string }): Promise<{ accepted: boolean }> {
       calls.push('claudeSignIn');
@@ -113,12 +134,19 @@ function fakeBridge(): {
     emitCodex(state): void {
       codexListener?.(state);
     },
+    emitGlm(state): void {
+      glmListener?.(state);
+    },
     async answerClaude(state): Promise<void> {
       pendingClaude.shift()?.(state);
       await settle();
     },
     async answerCodex(state): Promise<void> {
       pendingCodex.shift()?.(state);
+      await settle();
+    },
+    async answerGlm(state): Promise<void> {
+      pendingGlm.shift()?.(state);
       await settle();
     },
     async answerSubmit(): Promise<void> {
@@ -166,7 +194,7 @@ describe('the boot prime', () => {
     subscribeToAgentSetup();
     void primeAgentSetup();
     void primeAgentSetup();
-    expect(bridge.calls).toEqual(['claudeStatus', 'codexStatus']);
+    expect(bridge.calls).toEqual(['claudeStatus', 'codexStatus', 'glmStatus']);
     expect(bridge.claudeRequests).toEqual([{}]);
     await bridge.answerClaude(claude({ status: 'signed-out' }));
     expect(store().claude.status).toBe('signed-out');
@@ -179,6 +207,7 @@ describe('the boot prime', () => {
     bridge.emitCodex({ status: 'downloading', percent: 10 });
     await bridge.answerClaude(claude({ status: 'idle' }));
     await bridge.answerCodex({ status: 'idle' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     expect(store().claude.status).toBe('checking');
     expect(store().codex.status).toBe('downloading');
@@ -189,6 +218,7 @@ describe('the boot prime', () => {
     const primed = primeAgentSetup();
     await bridge.answerClaude(claude({ status: 'signed-in', email: 'a@b.c', plan: 'max' }));
     await bridge.answerCodex({ status: 'ready' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     expect(store().claude.status).toBe('signed-in');
     expect(store().codex.status).toBe('ready');
@@ -201,6 +231,7 @@ describe('the boot prime', () => {
     const primed = primeAgentSetup();
     await bridge.answerClaude(claude({ status: 'signed-out' }));
     await bridge.answerCodex({ status: 'signed-out' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     expect(store().claude.status).toBe('verifying');
     expect(store().codex.status).toBe('validating');
@@ -211,9 +242,10 @@ describe('the boot prime', () => {
     const primed = primeAgentSetup();
     await bridge.answerClaude(claude({ status: 'signed-in', plan: 'max' }));
     await bridge.answerCodex({ status: 'ready' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     const state = store();
-    expect(state.touched).toEqual({ claude: false, codex: false });
+    expect(state.touched).toEqual({ claude: false, codex: false, glm: false });
     expect(state.lastConnected).toBeNull();
     expect(claudeMark(state)).toBeUndefined();
     expect(canContinue(state)).toBe(false);
@@ -239,6 +271,7 @@ describe('tapping', () => {
     const primed = primeAgentSetup();
     await bridge.answerClaude(claude({ status: 'signed-in', plan: 'max' }));
     await bridge.answerCodex({ status: 'idle' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     expect(store().lastConnected).toBeNull();
 
@@ -457,6 +490,7 @@ describe('request ownership', () => {
     const tapped = store().tapCodex();
     await bridge.answerClaude(claude({ status: 'signed-in', plan: 'max' }));
     await bridge.answerCodex({ status: 'ready' });
+    await bridge.answerGlm({ status: 'no-key' });
     await primed;
     expect(store().claude.status).toBe('idle');
     expect(store().codex.status).toBe('idle');
@@ -657,7 +691,7 @@ describe('resetTouched', () => {
     expect(store().lastConnected).toBe('claude');
 
     store().resetTouched();
-    expect(store().touched).toEqual({ claude: false, codex: false });
+    expect(store().touched).toEqual({ claude: false, codex: false, glm: false });
     expect(store().lastConnected).toBeNull();
     expect(store().code).toBe('');
     expect(store().claude.status).toBe('signed-in');

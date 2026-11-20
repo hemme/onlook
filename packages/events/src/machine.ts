@@ -22,8 +22,8 @@ export type MachineInstallResult = 'installed' | 'failed' | 'unsupported';
 export const MACHINE_HELP_IDS = ['developer-tools', 'activity-monitor', 'claude', 'chatgpt'] as const;
 export type MachineHelpId = typeof MACHINE_HELP_IDS[number];
 
-/** Where a prompt gets pasted: the agent's own app when it is installed, its site otherwise. */
-export const MACHINE_AGENT_HELP: Record<HarnessId, MachineHelpId> = { claude: 'claude', codex: 'chatgpt' };
+/** Where a prompt gets pasted: the agent's own app when it is installed, its site otherwise. GLM has no local app; its console plays the part. */
+export const MACHINE_AGENT_HELP: Record<HarnessId, MachineHelpId> = { claude: 'claude', codex: 'chatgpt', glm: 'developer-tools' };
 
 export function machineHasFailure(checks: readonly MachineCheck[]): boolean {
   return checks.some((check) => check.status === 'failed');

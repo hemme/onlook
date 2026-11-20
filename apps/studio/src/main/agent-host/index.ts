@@ -211,6 +211,8 @@ import { saveAttachment } from '../images/save-attachment.js';
 import type { AgentBackend, BackendState, ModelPick } from './backend.js';
 import { SessionMap } from './session-map.js';
 import { codexRoot, createAppServerSession, selectedHarness } from './appserver/index.js';
+import { glmChildSdkEnv } from '../glm/env.js';
+import { recheckGlmAfterUnauthenticated } from '../glm/index.js';
 import { bindProjectHarness, hasAgentAnswer, projectHarness } from './project-harness.js';
 import { hasUserMessage } from './user-message.js';
 import { devSwitches } from '../env/dev-switches.js';
@@ -838,7 +840,7 @@ export class AgentHost {
       const runtime = runtimeOfAsker ?? this.defaultHarness();
       const result = await (runtime === 'appserver'
         ? Promise.resolve(probeCodexConnection(codexSetupStatus(), codexRoot()))
-        : probeConnection());
+        : probeConnection(2_500, runtime === 'glm' ? await glmChildSdkEnv() : undefined));
       this.probed = result;
       this.emitMachine(result, runtime);
       return result;
@@ -1664,6 +1666,7 @@ export class AgentHost {
       ...effort,
       ...permissionMode,
       ...allowRules,
+      ...(harness === 'glm' ? { providerEnv: await glmChildSdkEnv(), storedHarness: 'glm' as const } : {}),
       workspace: names,
       ...starter,
       ...(plan.kind === 'resume'
@@ -1678,7 +1681,7 @@ export class AgentHost {
         recordAgentCost({
           ...workspaceTelemetryProperties(workspace.repoIdentity),
           agent_session_id: session.id,
-          harness: 'claude',
+          harness: harnessIdOf(harness),
           at: 'turn_end',
           total_cost_usd: sample.totalCostUsd,
           delta_cost_usd: sample.costDeltaUsd,
@@ -1687,7 +1690,7 @@ export class AgentHost {
       },
       onAllowRules: (rules) => {
         try {
-          rememberAllowRules(cwd, 'claude', rules);
+          rememberAllowRules(cwd, harness, rules);
         } catch (err) {
           // The grant still holds for this session; a throw here would refuse the tool the user just allowed.
           logger.warn('could not remember an always-allow for the next session', { error: err });
@@ -1705,6 +1708,11 @@ export class AgentHost {
       },
       onError: (code, apiErrorStatus) => {
         recordAgentError(ref, { code, apiErrorStatus });
+        if (harness === 'glm') {
+          // The Claude account is not the one that failed; re-check the GLM key instead of signing Claude out.
+          if (isSignInFixable(code) || isCredentialRejected(code)) recheckGlmAfterUnauthenticated();
+          return;
+        }
         if (isSignInFixable(code)) this.onClaudeUnauthenticated('signed-out');
         else if (isCredentialRejected(code)) this.onClaudeUnauthenticated('rejected');
       },

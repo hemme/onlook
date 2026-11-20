@@ -22,6 +22,7 @@ export const SWITCH_NAMES = {
   firstRun: 'STUDIO_FIRST_RUN',
   flags: 'STUDIO_FLAGS',
   ghBin: 'STUDIO_GH_BIN',
+  glmBaseUrl: 'STUDIO_GLM_BASE_URL',
   harness: 'STUDIO_HARNESS',
   launchSessionProofOutcome: 'STUDIO_LAUNCH_SESSION_PROOF_OUTCOME',
   launchSessionProofReady: 'STUDIO_LAUNCH_SESSION_PROOF_READY',

@@ -236,6 +236,7 @@ export function HarnessTile({ tile, strings, glyphs, onSelect, testId, layout = 
 function lineFor(tile: Extract<HarnessTileState, { kind: 'harness' }>, strings: OnboardingUiStrings): string {
   if (tile.state === 'idle') return '';
   if (tile.harness === 'claude') return pickCopy(strings.tileLine, { harness: 'claude', state: tile.state });
+  if (tile.harness === 'glm') return pickCopy(strings.tileLine, { harness: 'glm', state: tile.state });
   if (tile.state === 'downloading') return fill(strings.tileLine.codex.downloading, { percent: tile.percent });
   return pickCopy(strings.tileLine, { harness: 'codex', state: tile.state });
 }

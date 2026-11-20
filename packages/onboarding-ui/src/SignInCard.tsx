@@ -67,6 +67,7 @@ export function titleFor(state: SetupState, strings: OnboardingUiStrings): strin
   if (state.harness === 'claude' && state.state === 'cannot-connect' && state.runtimeUnavailable) return strings.runtimeMissingTitle;
   if ('copy' in state && state.copy !== undefined) return state.copy.title;
   if (!isSignedIn(state)) return pickCopy(strings.dialogTitle, state);
+  if (state.harness === 'glm') return pickCopy(strings.dialogTitle, state);
   return state.email === undefined ? strings.dialogTitleNoEmail : fill(pickCopy(strings.dialogTitle, state), { email: state.email });
 }
 
@@ -81,6 +82,7 @@ function body(state: SetupState, strings: OnboardingUiStrings): string {
 export function fieldFor(state: SetupState): { text: string; action: SetupAction } | undefined {
   if (state.state === 'paste-code') return { text: state.code ?? '', action: 'paste' };
   if (state.state === 'fallback') return { text: state.command, action: 'copy' };
+  if (state.harness === 'glm' && (state.state === 'no-key' || state.state === 'invalid-key')) return { text: state.key ?? '', action: 'paste' };
   return undefined;
 }
 
@@ -187,8 +189,11 @@ export function SignInCard({ state, host, strings, glyphs, onAction, onCodeChang
 
 /** The transcript row's one line: the designed prompt while signed out, the email once in, the dialog title between. */
 export function chatLineFor(state: SetupState, strings: OnboardingUiStrings): string {
-  if (state.state === 'not-signed-in') return strings.chatLine[state.harness];
-  if (isSignedIn(state)) return state.email === undefined ? strings.chatSignedInNoEmail : fill(strings.chatSignedIn, { email: state.email });
+  if (state.state === 'not-signed-in' || state.state === 'no-key') return strings.chatLine[state.harness];
+  if (isSignedIn(state)) {
+    if (state.harness === 'glm') return strings.chatSignedInNoEmail;
+    return state.email === undefined ? strings.chatSignedInNoEmail : fill(strings.chatSignedIn, { email: state.email });
+  }
   return titleFor(state, strings);
 }
 

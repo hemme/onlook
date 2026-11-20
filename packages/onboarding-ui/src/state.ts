@@ -1,6 +1,6 @@
 import type { HarnessId } from '@studio/events';
 
-export const HARNESSES = ['claude', 'codex'] as const satisfies readonly HarnessId[];
+export const HARNESSES = ['claude', 'codex', 'glm'] as const satisfies readonly HarnessId[];
 
 /** No `not-installed`: the agent kit pins Claude's binary, so it cannot occur (ONL-2176). */
 export type ClaudeSetupStateId = 'not-signed-in' | 'checking' | 'signing-in' | 'paste-code' | 'signed-in' | 'cannot-connect' | 'fallback';
@@ -38,7 +38,17 @@ export const CHATGPT_SETUP_STATES = [
   'fallback',
 ] as const satisfies readonly ChatGptSetupStateId[];
 
-export type SetupStateId = ClaudeSetupStateId | ChatGptSetupStateId;
+export type GlmSetupStateId = 'no-key' | 'checking' | 'saving' | 'invalid-key' | 'connected' | 'cannot-connect';
+export const GLM_SETUP_STATES = [
+  'no-key',
+  'checking',
+  'saving',
+  'invalid-key',
+  'connected',
+  'cannot-connect',
+] as const satisfies readonly GlmSetupStateId[];
+
+export type SetupStateId = ClaudeSetupStateId | ChatGptSetupStateId | GlmSetupStateId;
 
 /** What a failed check heard; each picks its sheet's copy and footer (ONL-2903). */
 export type CannotConnectCause = 'usage-limit' | 'rate-limited' | 'billing' | 'no-answer' | 'service-error' | 'agent-error' | 'unreachable';
@@ -94,7 +104,12 @@ export type SetupState =
   | { harness: 'codex'; state: 'connected'; email?: string; plan: string }
   | { harness: 'codex'; state: 'setup-failed' | 'wont-start'; detail: string; other?: OtherAgentOffer }
   | { harness: 'codex'; state: 'out-of-date'; detail: string }
-  | { harness: 'codex'; state: 'fallback'; command: string; detail?: string };
+  | { harness: 'codex'; state: 'fallback'; command: string; detail?: string }
+  | { harness: 'glm'; state: 'no-key'; key?: string }
+  | { harness: 'glm'; state: 'checking' | 'saving' }
+  | { harness: 'glm'; state: 'invalid-key'; detail?: string; key?: string }
+  | { harness: 'glm'; state: 'connected'; model?: string }
+  | { harness: 'glm'; state: 'cannot-connect'; detail?: string; copy?: SheetCopy; diagnostic?: string };
 
 export type ClaudeTileStateId = 'idle' | ClaudeSetupStateId;
 export type ChatGptTileStateId = 'idle' | ChatGptSetupStateId;
@@ -104,15 +119,19 @@ export const CHATGPT_TILE_STATES = ['idle', ...CHATGPT_SETUP_STATES] as const sa
 export type ComingSoonId = 'opencode' | 'other';
 export const COMING_SOON = ['opencode', 'other'] as const satisfies readonly ComingSoonId[];
 
+export type GlmTileStateId = 'idle' | GlmSetupStateId;
+export const GLM_TILE_STATES = ['idle', ...GLM_SETUP_STATES] as const satisfies readonly GlmTileStateId[];
+
 export type HarnessTileState =
   | { kind: 'harness'; harness: 'claude'; state: ClaudeTileStateId }
   | { kind: 'harness'; harness: 'codex'; state: Exclude<ChatGptTileStateId, 'downloading'> }
   | { kind: 'harness'; harness: 'codex'; state: 'downloading'; percent: number }
+  | { kind: 'harness'; harness: 'glm'; state: GlmTileStateId }
   | { kind: 'coming-soon'; id: ComingSoonId };
 
 export type TileMark = 'attention' | 'connected';
 
-const ATTENTION: ReadonlySet<SetupStateId> = new Set(['fallback', 'setup-failed', 'wont-start', 'cannot-connect']);
+const ATTENTION: ReadonlySet<SetupStateId> = new Set(['fallback', 'setup-failed', 'wont-start', 'cannot-connect', 'invalid-key']);
 const CONNECTED: ReadonlySet<SetupStateId> = new Set(['signed-in', 'connected']);
 
 export function markFor(tile: HarnessTileState): TileMark | undefined {
@@ -122,7 +141,7 @@ export function markFor(tile: HarnessTileState): TileMark | undefined {
   return undefined;
 }
 
-const BUSY: ReadonlySet<SetupStateId> = new Set(['signing-in', 'paste-code', 'downloading', 'checking']);
+const BUSY: ReadonlySet<SetupStateId> = new Set(['signing-in', 'paste-code', 'downloading', 'checking', 'saving']);
 
 export function isBusy(state: SetupStateId): boolean {
   return BUSY.has(state);
@@ -132,7 +151,8 @@ export function isBusy(state: SetupStateId): boolean {
 export const CHAT_CARD_STATES = {
   claude: ['not-signed-in', 'signing-in', 'paste-code', 'signed-in'],
   codex: ['not-signed-in', 'signing-in', 'connected'],
-} as const satisfies { claude: readonly ClaudeSetupStateId[]; codex: readonly ChatGptSetupStateId[] };
+  glm: ['no-key', 'checking', 'connected'],
+} as const satisfies { claude: readonly ClaudeSetupStateId[]; codex: readonly ChatGptSetupStateId[]; glm: readonly GlmSetupStateId[] };
 
 export type SignInCardHost = 'dialog' | 'chat';
 
@@ -172,6 +192,9 @@ export const FOOTER: Record<SetupStateId, SetupFooter> = {
   'out-of-date': { primary: 'download-again' },
   'cannot-connect': { primary: 'check-again' },
   fallback: { ghost: 'check-again', primary: 'open-terminal' },
+  'no-key': { ghost: 'cancel', primary: 'done' },
+  saving: { ghost: 'cancel' },
+  'invalid-key': { ghost: 'cancel', primary: 'done' },
 };
 
 const CAUSE_GHOST: Partial<Record<CannotConnectCause, SetupAction>> = {
@@ -210,7 +233,17 @@ const CHATGPT_AVATAR: Record<ChatGptSetupStateId, AvatarGlyph> = {
   fallback: 'console',
 };
 
+const GLM_AVATAR: Record<GlmSetupStateId, AvatarGlyph> = {
+  'no-key': 'harness',
+  checking: 'spinner',
+  saving: 'spinner',
+  'invalid-key': 'warning',
+  connected: 'check',
+  'cannot-connect': 'warning',
+};
+
 export function avatarFor(state: SetupState): AvatarGlyph {
+  if (state.harness === 'glm') return GLM_AVATAR[state.state];
   if (state.harness !== 'claude') return CHATGPT_AVATAR[state.state];
   // The brand mark holds still, so the verification sheet would read as hung without it (ONL-2496).
   return state.state === 'checking' ? 'spinner' : 'harness';

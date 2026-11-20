@@ -43,7 +43,7 @@ function defaultsFor(id: HarnessId): HarnessDefaults {
 }
 
 export function settingsDefaults(): SettingsDefaults {
-  return { claude: defaultsFor('claude'), codex: defaultsFor('codex') };
+  return { claude: defaultsFor('claude'), codex: defaultsFor('codex'), glm: defaultsFor('glm') };
 }
 
 export function broadcastSettingsChanged(state: SettingsState = settingsState()): void {

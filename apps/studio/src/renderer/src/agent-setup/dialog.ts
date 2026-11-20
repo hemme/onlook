@@ -1,15 +1,16 @@
 import type { HarnessId, SetupEntryPoint } from '@studio/events';
 import type { SetupAction, SetupState } from '@studio/onboarding-ui/state';
 import { accountLink, openAccountLink } from '../agents/accountLinks.js';
-import { chatGptSetupState, claudeSetupState, isClaudeConnected, isCodexConnected, type AgentSetupStrings, type MappedSetup } from '../agents/mapping.js';
+import { chatGptSetupState, claudeSetupState, glmSetupState, isClaudeConnected, isCodexConnected, type AgentSetupStrings, type MappedSetup } from '../agents/mapping.js';
 import type { AgentSetupState } from './store.js';
 
-export type SetupDialogFacts = Pick<AgentSetupState, 'claude' | 'claudeSettled' | 'codex' | 'code' | 'codexSignInAttempted' | 'inFlight'>;
+export type SetupDialogFacts = Pick<AgentSetupState, 'claude' | 'claudeSettled' | 'codex' | 'glm' | 'code' | 'codexSignInAttempted' | 'inFlight'>;
 
 export function mappedSetupFor(harness: HarnessId, facts: SetupDialogFacts, strings: AgentSetupStrings, now = Date.now()): MappedSetup {
   const flight = facts.inFlight[harness];
   // `check` counts too: a Check again drew the in-flight sheet without its shimmer, so the sheet read as hung (ONL-2496).
   const busy = flight.detect || flight.submit || flight.signIn || flight.check;
+  if (harness === 'glm') return glmSetupState(facts.glm, facts.code);
   return harness === 'claude'
     ? claudeSetupState(facts.claude, strings, {
         code: facts.code,
@@ -23,15 +24,16 @@ export function mappedSetupFor(harness: HarnessId, facts: SetupDialogFacts, stri
 
 /** `required` while a login runs: Escape and the backdrop cannot kill it by accident. */
 export function dialogPurposeFor(state: SetupState): 'info' | 'required' {
-  return state.state === 'signing-in' || state.state === 'paste-code' ? 'required' : 'info';
+  return state.state === 'signing-in' || state.state === 'paste-code' || state.state === 'saving' ? 'required' : 'info';
 }
 
 export function disabledActionsFor(state: SetupState, facts: Pick<SetupDialogFacts, 'code' | 'inFlight'>, now = Date.now()): SetupAction[] {
   const flight = facts.inFlight[state.harness];
   const disabled: SetupAction[] = [];
-  if (state.state === 'cannot-connect' && state.retryAt !== undefined && state.retryAt > now) disabled.push('check-again');
+  if (state.state === 'cannot-connect' && 'retryAt' in state && state.retryAt !== undefined && state.retryAt > now) disabled.push('check-again');
   if (flight.signIn) disabled.push('sign-in');
   if (state.state === 'paste-code' && (facts.code === '' || flight.submit)) disabled.push('done');
+  if (state.harness === 'glm' && (state.state === 'no-key' || state.state === 'invalid-key') && (facts.code === '' || flight.submit)) disabled.push('done');
   if ((state.state === 'fallback' || state.state === 'cannot-connect') && flight.check) disabled.push('check-again');
   return disabled;
 }
@@ -40,6 +42,7 @@ interface SetupActions {
   signInClaude: (entryPoint: SetupEntryPoint, browserId?: string) => Promise<void>;
   openPageAgain: () => Promise<void>;
   pasteCode: (raw: string) => void;
+  typeCode: (raw: string) => void;
   submitCode: () => Promise<void>;
   cancelClaude: () => Promise<void>;
   checkClaude: (entryPoint?: SetupEntryPoint) => Promise<void>;
@@ -47,6 +50,9 @@ interface SetupActions {
   signInCodex: (entryPoint?: SetupEntryPoint, browserId?: string) => Promise<void>;
   cancelCodex: () => Promise<void>;
   checkCodex: () => Promise<void>;
+  saveGlmKey: (key: string) => Promise<void>;
+  clearGlmKey: () => Promise<void>;
+  checkGlm: () => Promise<void>;
 }
 
 export interface SetupDialogDeps {
@@ -104,6 +110,8 @@ export class SetupDialogController {
   async act(action: SetupAction, state: SetupState, browserId?: string): Promise<void> {
     const actions = this.deps.actions();
     const isClaude = this.deps.harness === 'claude';
+    const isGlm = this.deps.harness === 'glm';
+    if (isGlm) return this.actGlm(action, state);
     switch (action) {
       case 'sign-in':
         // Both Harnesses carry the entry point or the funnel cannot tell onboarding from recovery (ONL-2187).
@@ -152,8 +160,37 @@ export class SetupDialogController {
     }
   }
 
+  /** GLM's sheet has no browser round-trip: the key field is the whole flow. */
+  private async actGlm(action: SetupAction, state: SetupState): Promise<void> {
+    const actions = this.deps.actions();
+    switch (action) {
+      case 'paste': {
+        const key = await this.deps.readClipboardText();
+        actions.typeCode(key);
+        return;
+      }
+      case 'done':
+        if (state.state === 'no-key' || state.state === 'invalid-key') return actions.saveGlmKey(state.key ?? '');
+        this.close();
+        return;
+      case 'cancel':
+        this.close();
+        return;
+      case 'check-again':
+      case 'try-again':
+        return actions.checkGlm();
+      case 'use-other-agent':
+        this.deps.onSwitchHarness?.();
+        return;
+      default:
+        return;
+    }
+  }
+
   private cancel(): Promise<void> {
     const actions = this.deps.actions();
+    // GLM has no child to park: a stored key survives the dialog it was pasted in.
+    if (this.deps.harness === 'glm') return Promise.resolve();
     return this.deps.harness === 'claude' ? actions.cancelClaude() : actions.cancelCodex();
   }
 }

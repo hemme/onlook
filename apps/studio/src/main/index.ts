@@ -32,6 +32,7 @@ import { registerIpcHandlers } from './ipc.js';
 import { installApplicationMenu } from './menu/index.js';
 import { registerLocationHandlers } from './location/index.js';
 import { registerCodexHost, startCodexBootPreCheck } from './codex/index.js';
+import { registerGlmHost } from './glm/index.js';
 import { registerOnboardingHandlers } from './onboarding/index.js';
 import { registerAppCommandHandlers } from './app-commands/index.js';
 import { registerTaskManagerHandlers } from './task-manager/window.js';
@@ -347,6 +348,7 @@ void app.whenReady().then(() => {
   registerCodexHost({ onState: (state) => noteCodexSetupChanged(state.status) });
   startCodexBootPreCheck();
   registerClaudeHost({ onState: (state, meta) => noteClaudeSetupChanged(state, meta) });
+  registerGlmHost();
   registerTelemetryHandlers();
   registerDevErrorHook();
   // Before the agent host, which writes captures into the image store (ONL-1881).

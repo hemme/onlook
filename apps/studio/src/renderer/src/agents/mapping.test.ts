@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test';
+import { t } from '@studio/i18n';
 import { CLAUDE_API_KEY_PLAN, CLAUDE_LOGIN_COMMAND, CODEX_API_KEY_PLAN, type ClaudeSetupState, type ClaudeSetupVerdict, type CodexSetupState } from '@studio/events';
-import { footerFor, type SetupState } from '@studio/onboarding-ui/state';
-import { CODEX_DEVICE_AUTH_COMMAND, chatGptSetupState, claudeMark, claudePlanId, claudeSetupState, codexMark, isClaudeConnected } from './mapping.js';
+import { footerFor, markFor, type SetupState } from '@studio/onboarding-ui/state';
+import { fieldFor } from '@studio/onboarding-ui';
+import { CODEX_DEVICE_AUTH_COMMAND, chatGptSetupState, claudeMark, claudePlanId, claudeSetupState, codexMark, glmSetupState, glmTileState, isClaudeConnected, isGlmConnected, isConnected } from './mapping.js';
 import { agentSetupStrings } from '../agent-setup/strings.js';
 
 const strings = agentSetupStrings();
@@ -92,7 +94,7 @@ describe('a failed verification', () => {
     });
   });
 
-  type Sheet = Extract<SetupState, { state: 'cannot-connect' }>;
+  type Sheet = Extract<SetupState, { harness: 'claude'; state: 'cannot-connect' }>;
   const sheet = (rest: Omit<Extract<ClaudeSetupState, { status: 'verification-failed' }>, 'status' | 'command'>, otherReady: boolean | undefined = false, now = 1_000_000): Sheet => {
     const mapped = claudeSetupState(claude({ status: 'verification-failed', plan: 'max', ...rest }), strings, { ...(otherReady === undefined ? {} : { otherReady }), now }).state;
     if (mapped.harness !== 'claude' || mapped.state !== 'cannot-connect') throw new Error('Expected a Claude connection failure');
@@ -166,8 +168,8 @@ describe('a failed verification', () => {
 });
 
 describe('the tile marks', () => {
-  const touched = { claude: true, codex: true };
-  const untouched = { claude: false, codex: false };
+  const touched = { claude: true, codex: true, glm: true };
+  const untouched = { claude: false, codex: false, glm: false };
 
   it('paints nothing before a tap, whatever the machine knows (ONL-2186)', () => {
     expect(claudeMark({ claude: claude({ status: 'signed-in' }), touched: untouched })).toBeUndefined();
@@ -192,5 +194,34 @@ describe('the tile marks', () => {
   it('a failed verification needs the user, and reads as the sign-in sheet does when a sign-in is the remedy (ONL-2496)', () => {
     expect(claudeMark({ claude: claude({ status: 'verification-failed', detail: 'turn-provider-refused' }), touched })).toBe('attention');
     expect(claudeMark({ claude: claude({ status: 'verification-failed', detail: 'turn-signed-out' }), touched })).toBeUndefined();
+  });
+});
+
+describe('the GLM mapping', () => {
+  const touched = { claude: false, codex: false, glm: true };
+
+  it('paints nothing before a tap, like the other harnesses (ONL-2186)', () => {
+    expect(glmTileState({ glm: { status: 'ready' }, touched: { claude: false, codex: false, glm: false } })).toEqual({ kind: 'harness', harness: 'glm', state: 'idle' });
+  });
+
+  it('marks a working key connected and a refused one attention', () => {
+    expect(markFor(glmTileState({ glm: { status: 'ready' }, touched }))).toBe('connected');
+    expect(markFor(glmTileState({ glm: { status: 'invalid-key', detail: 'rejected-by-provider' }, touched }))).toBe('attention');
+    expect(markFor(glmTileState({ glm: { status: 'no-key' }, touched }))).toBeUndefined();
+  });
+
+  it('counts GLM as connected only on a ready key', () => {
+    expect(isGlmConnected({ status: 'ready' })).toBe(true);
+    expect(isGlmConnected({ status: 'checking' })).toBe(false);
+    expect(isConnected({ claude: claude({ status: 'idle' }), codex: { status: 'idle' }, glm: { status: 'ready' } }, 'glm')).toBe(true);
+    expect(isConnected({ claude: claude({ status: 'idle' }), codex: { status: 'idle' }, glm: { status: 'no-key' } }, 'glm')).toBe(false);
+  });
+
+  it('hands the key field its draft and the provider verdict its sheet', () => {
+    const field = glmSetupState({ status: 'no-key' }, 'pasted-draft');
+    expect(field.state).toEqual({ harness: 'glm', state: 'no-key', key: 'pasted-draft' });
+    expect(fieldFor(field.state)).toEqual({ text: 'pasted-draft', action: 'paste' });
+    expect(glmSetupState({ status: 'ready', model: 'glm-5.3' }).state).toEqual({ harness: 'glm', state: 'connected', model: 'glm-5.3' });
+    expect(glmSetupState({ status: 'error', detail: 'network' }).state).toEqual({ harness: 'glm', state: 'cannot-connect', detail: t('onboarding.setup.glm.detail.network') });
   });
 });

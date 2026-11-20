@@ -3,7 +3,7 @@ import { isHarnessId } from '@studio/events';
 import { readStateFile, writeStateFile } from '../state/file.js';
 import { stateRoot } from '../state/root.js';
 
-type Provider = 'claude' | 'codex';
+type Provider = 'claude' | 'codex' | 'glm';
 
 let cache: { path: string; providers: Set<Provider> } | undefined;
 

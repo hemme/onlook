@@ -50,12 +50,12 @@ function installBridge(): { calls: string[]; codes: string[] } {
 
 function flights(claudeFlight: Partial<HarnessFlight>): AgentSetupState['inFlight'] {
   const idle: HarnessFlight = { detect: false, submit: false, check: false, signIn: false };
-  return { claude: { ...idle, ...claudeFlight }, codex: idle };
+  return { claude: { ...idle, ...claudeFlight }, codex: idle, glm: idle };
 }
 
 function facts(): SetupDialogFacts {
   const { claude: claudeState, claudeSettled, codex, code, codexSignInAttempted, inFlight } = useAgentSetupStore.getState();
-  return { claude: claudeState, claudeSettled, codex, code, codexSignInAttempted, inFlight };
+  return { claude: claudeState, claudeSettled, codex, glm: useAgentSetupStore.getState().glm, code, codexSignInAttempted, inFlight };
 }
 
 function claudeSheet(id: (typeof CLAUDE_SETUP_STATES)[number]): SetupState {
@@ -183,7 +183,7 @@ describe('the sheet from the store', () => {
     useAgentSetupStore.setState({ inFlight: flights({}) });
     expect(mapped('claude').busy).toBe(false);
 
-    useAgentSetupStore.setState({ inFlight: { claude: idle, codex: { ...idle, check: true } } });
+    useAgentSetupStore.setState({ inFlight: { claude: idle, codex: { ...idle, check: true }, glm: idle } });
     expect(mapped('codex').busy).toBe(true);
   });
 

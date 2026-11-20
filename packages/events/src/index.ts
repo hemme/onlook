@@ -9,6 +9,7 @@ export * from './canvas-url.js';
 export * from './claude-setup.js';
 export * from './code.js';
 export * from './codex.js';
+export * from './glm-setup.js';
 export * from './connectors.js';
 export * from './debug.js';
 export * from './drafts.js';

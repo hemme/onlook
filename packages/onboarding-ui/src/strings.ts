@@ -3,12 +3,14 @@ import type {
   ChatGptSetupStateId,
   ClaudeSetupStateId,
   ComingSoonId,
+  GlmSetupStateId,
   SetupAction,
 } from './state.js';
 
 export interface PerHarnessCopy {
   claude: Record<ClaudeSetupStateId, string>;
   codex: Record<ChatGptSetupStateId, string>;
+  glm: Record<GlmSetupStateId, string>;
 }
 
 /** `{percent}`, `{email}` and `{plan}` are templates. */
@@ -52,8 +54,13 @@ export interface OnboardingUiStrings {
 
 export { fill } from '@studio/chat-ui';
 
-export type CopyState = { harness: 'claude'; state: ClaudeSetupStateId } | { harness: 'codex'; state: ChatGptSetupStateId };
+export type CopyState =
+  | { harness: 'claude'; state: ClaudeSetupStateId }
+  | { harness: 'codex'; state: ChatGptSetupStateId }
+  | { harness: 'glm'; state: GlmSetupStateId };
 
 export function pickCopy(copy: PerHarnessCopy, state: CopyState): string {
-  return state.harness === 'claude' ? copy.claude[state.state] : copy.codex[state.state];
+  if (state.harness === 'claude') return copy.claude[state.state];
+  if (state.harness === 'codex') return copy.codex[state.state];
+  return copy.glm[state.state];
 }

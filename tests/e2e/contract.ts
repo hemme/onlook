@@ -352,8 +352,10 @@ export const TESTID = {
   onboardingAgentRow: 'onboarding-agent-row',
   onboardingTileClaude: 'onboarding-tile-claude',
   onboardingTileCodex: 'onboarding-tile-codex',
+  onboardingTileGlm: 'onboarding-tile-glm',
   onboardingDialogClaude: 'onboarding-dialog-claude',
   onboardingDialogCodex: 'onboarding-dialog-codex',
+  onboardingDialogGlm: 'onboarding-dialog-glm',
   /** Footer buttons are `setupActionPrefix + <action>`; the field row's Paste / Copy is `signInActionPrefix + <action>`. */
   setupActionPrefix: 'setup-action-',
   signInActionPrefix: 'sign-in-action-',

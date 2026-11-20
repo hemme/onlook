@@ -15,6 +15,7 @@ describe('the Harness descriptors', () => {
       countsRetryAttempts: true,
       grantsFollowProviderThread: false,
       skillsCarryPath: false,
+      commitAttribution: true,
     });
   });
 
@@ -30,6 +31,7 @@ describe('the Harness descriptors', () => {
       countsRetryAttempts: false,
       grantsFollowProviderThread: true,
       skillsCarryPath: true,
+      commitAttribution: false,
     });
   });
 
@@ -39,7 +41,13 @@ describe('the Harness descriptors', () => {
   });
 
   it('lists the stored names Claude first', () => {
-    expect(STORED_HARNESSES).toEqual(['claude', 'appserver']);
+    expect(STORED_HARNESSES).toEqual(['claude', 'appserver', 'glm']);
+  });
+
+  it('stamps commit attribution only where the CLI names the right author', () => {
+    expect(HARNESSES.claude.commitAttribution).toBe(true);
+    expect(HARNESSES.codex.commitAttribution).toBe(false);
+    expect(HARNESSES.glm.commitAttribution).toBe(false);
   });
 
   it('agrees with the shared attachment classifier on PDFs', () => {

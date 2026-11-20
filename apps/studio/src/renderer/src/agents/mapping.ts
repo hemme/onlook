@@ -11,9 +11,11 @@ import {
   type ClaudeVerificationDetail,
   type CodexSetupState,
   type CodexSetupStatus,
+  type GlmSetupState,
   type HarnessId,
 } from '@studio/events';
 import { fill } from '@studio/chat-ui';
+import { t } from '@studio/i18n';
 import {
   markFor,
   type CannotConnectCause,
@@ -21,6 +23,7 @@ import {
   type OtherAgentOffer,
   type SheetCopy,
   type ClaudeSetupStateId,
+  type GlmTileStateId,
   type HarnessTileState,
   type SetupState,
   type TileMark,
@@ -347,16 +350,64 @@ export function isCodexConnected(state: CodexSetupState): boolean {
   return state.status === 'ready';
 }
 
+export function isGlmConnected(state: GlmSetupState): boolean {
+  return state.status === 'ready';
+}
+
 export interface SetupFacts {
   claude: ClaudeSetupState;
   claudeSettled?: ClaudeSetupState | undefined;
   codex: CodexSetupState;
+  glm?: GlmSetupState | undefined;
   codexSignInAttempted?: boolean;
   touched: Record<HarnessId, boolean>;
 }
 
-export function isConnected(facts: Pick<SetupFacts, 'claude' | 'codex'>, harness: HarnessId): boolean {
-  return harness === 'claude' ? isClaudeConnected(facts.claude) : isCodexConnected(facts.codex);
+export function isConnected(facts: Pick<SetupFacts, 'claude' | 'codex' | 'glm'>, harness: HarnessId): boolean {
+  if (harness === 'claude') return isClaudeConnected(facts.claude);
+  if (harness === 'glm') return facts.glm !== undefined && isGlmConnected(facts.glm);
+  return isCodexConnected(facts.codex);
+}
+
+/** GLM's tile: the same idle-before-a-tap rule, then the key's own verdict. */
+export function glmTileState(facts: Pick<SetupFacts, 'glm' | 'touched'>): HarnessTileState {
+  if (!facts.touched.glm || facts.glm === undefined) return { kind: 'harness', harness: 'glm', state: 'idle' };
+  const id: GlmTileStateId =
+    facts.glm.status === 'ready' ? 'connected'
+    : facts.glm.status === 'no-key' ? 'no-key'
+    : facts.glm.status === 'invalid-key' ? 'invalid-key'
+    : facts.glm.status === 'checking' ? 'checking'
+    : facts.glm.status === 'saving' ? 'saving'
+    : 'cannot-connect';
+  return { kind: 'harness', harness: 'glm', state: id };
+}
+
+/** GLM's sheet: a key field instead of a browser round-trip. `code` is the field's own draft. */
+export function glmSetupState(state: GlmSetupState, code = ''): MappedSetup {
+  const busy = false;
+  const key = code === '' ? undefined : code;
+  switch (state.status) {
+    case 'no-key':
+      return { state: { harness: 'glm', state: 'no-key', ...(key === undefined ? {} : { key }) }, busy };
+    case 'checking':
+      return { state: { harness: 'glm', state: 'checking' }, busy: true };
+    case 'saving':
+      return { state: { harness: 'glm', state: 'saving' }, busy: true };
+    case 'ready':
+      return { state: { harness: 'glm', state: 'connected', ...(state.model === undefined ? {} : { model: state.model }) }, busy };
+    case 'invalid-key':
+      return { state: { harness: 'glm', state: 'invalid-key', ...(key === undefined ? {} : { key }) }, busy };
+    case 'error':
+      // Raw codes stay out of the person's own screen: the two causes get their sentence (ONL-2186).
+      return {
+        state: {
+          harness: 'glm',
+          state: 'cannot-connect',
+          detail: state.detail === 'keychain-unavailable' ? t('onboarding.setup.glm.detail.keychain') : t('onboarding.setup.glm.detail.network'),
+        },
+        busy,
+      };
+  }
 }
 
 /** `idle` before a tap whatever the machine knows: a boot-found credential paints nothing (ONL-2186). */

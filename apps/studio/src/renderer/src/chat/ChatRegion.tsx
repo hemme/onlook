@@ -21,7 +21,7 @@ import { useConnectorsMenuMaxHeight } from './connectors/useConnectorsMenuMaxHei
 import { ChatComposerDrawer, type ChatComposerInputHandle } from '@astryxdesign/core/Chat';
 import { useToast } from '@astryxdesign/core/Toast';
 import { ChatPanel, isComposerConnected, isOfferingNextTasks, placeNextTasks, isSignInShaped, signInPlacement, type ChatStrings, type ComposerFacts, type ComposerSlots, type ComposerStatus, type ConnectionRemedy, type NextTaskPick, type ToolFrameLinks } from '@studio/chat-ui';
-import { askedSetupFailure, notificationInvitationAsks, frameLinkMarkdown, parseFrameLink, parseTabLink, latestSetupTurnSteps, resendOfLastPrompt, retriesAsSetupAsk, setupTurnCards, type SetupStepsLive, type EffortLevel, type ResumeMethod, type HarnessId, type ModelRefusal, type QuestionAnswers, type RetryPrompt } from '@studio/events';
+import { IDLE_GLM_SETUP_STATE, askedSetupFailure, notificationInvitationAsks, frameLinkMarkdown, parseFrameLink, parseTabLink, latestSetupTurnSteps, resendOfLastPrompt, retriesAsSetupAsk, setupTurnCards, type SetupStepsLive, type EffortLevel, type ResumeMethod, type HarnessId, type ModelRefusal, type QuestionAnswers, type RetryPrompt } from '@studio/events';
 import { useLatestRef } from '../useLatestRef.js';
 import { failedSetupLineKey, narrationFor, usePaintedCreateState } from '../create/projectCreate.js';
 import { hasLiveEntry, useServerStore } from '../server/store.js';
@@ -1126,6 +1126,7 @@ export function ChatRegion(): React.JSX.Element {
       claude: setupClaude,
       claudeSettled: setupClaudeSettled,
       codex: setupCodex,
+      glm: IDLE_GLM_SETUP_STATE,
       code: setupCode,
       codexSignInAttempted: setupCodexSignInAttempted,
       inFlight: setupInFlight,

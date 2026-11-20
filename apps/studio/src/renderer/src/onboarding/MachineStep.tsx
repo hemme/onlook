@@ -17,7 +17,7 @@ const ACTION_LABELS = { install: 'machine.install', choose: 'machine.choose', fi
 /** White for what Onlook does for you, muted for what you choose or have to sort out (ONL-3111). */
 const ACTION_VARIANTS = { install: 'primary', choose: 'secondary', fix: 'secondary' } as const;
 /** Named as the person knows them: Codex's agent signs in with ChatGPT. */
-const AGENT_LABELS = { claude: 'machine.open.claude', codex: 'machine.open.chatgpt' } as const;
+const AGENT_LABELS = { claude: 'machine.open.claude', codex: 'machine.open.chatgpt', glm: 'machine.open.claude' } as const;
 /** With the focus-ring padding below it, the title sits 24px under the wordmark, where the prototype draws it (ONL-3111). */
 const HEADER_DROP = 'var(--spacing-5)';
 // The prototype's rhythm needs room the window's own 600px floor does not have; there the screen keeps the tighter one it had (ONL-3111).

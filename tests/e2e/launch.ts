@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { _electron as electron, expect, type ElectronApplication, type Locator, type Page } from '@playwright/test';
-import type { AgentSnapshot } from '@studio/events';
+import type { AgentSnapshot, HarnessId } from '@studio/events';
 import { FIRST_RUN_ENV, prepareLaunch, studioPaths, type ClaudeShim, type ClaudeShimOptions, type SeededPerson } from '@studio/fixtures';
 import { TESTID } from './contract.js';
 import { packagedAppPath } from '../../scripts/release-targets.js';
@@ -338,8 +338,8 @@ export function openedExternal(app: ElectronApplication): Promise<string[]> {
 }
 
 // `:not([data-busy])`: a detection in flight redraws the previous verdict.
-export function settledDialog(page: Page, provider: 'claude' | 'codex', state: string): Locator {
-  const id = provider === 'claude' ? TESTID.onboardingDialogClaude : TESTID.onboardingDialogCodex;
+export function settledDialog(page: Page, provider: HarnessId, state: string): Locator {
+  const id = provider === 'claude' ? TESTID.onboardingDialogClaude : provider === 'glm' ? TESTID.onboardingDialogGlm : TESTID.onboardingDialogCodex;
   return page.locator(`[data-testid="${id}"][data-state="${state}"]:not([data-busy])`);
 }
 

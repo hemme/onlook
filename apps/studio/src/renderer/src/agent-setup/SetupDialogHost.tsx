@@ -95,10 +95,11 @@ export function SetupDialogHost({ harness, entryPoint, onClose, onSwitchHarness 
   const claude = useAgentSetupStore((s) => s.claude);
   const claudeSettled = useAgentSetupStore((s) => s.claudeSettled);
   const codex = useAgentSetupStore((s) => s.codex);
+  const glm = useAgentSetupStore((s) => s.glm);
   const code = useAgentSetupStore((s) => s.code);
   const codexSignInAttempted = useAgentSetupStore((s) => s.codexSignInAttempted);
   const inFlight = useAgentSetupStore((s) => s.inFlight);
-  const mapped = mappedSetupFor(harness, { claude, claudeSettled, codex, code, codexSignInAttempted, inFlight }, setupStrings().setup);
+  const mapped = mappedSetupFor(harness, { claude, claudeSettled, codex, glm, code, codexSignInAttempted, inFlight }, setupStrings().setup);
   const failed = ['fallback', 'cannot-connect', 'setup-failed', 'wont-start', 'out-of-date'].includes(mapped.state.state);
   const terminal = failed || mapped.state.state === 'signed-in' || mapped.state.state === 'connected';
   useSurface('setup', failed ? 'error_state' : 'setup', failed ? 'setup_failed' : undefined);
@@ -122,12 +123,12 @@ export function SetupDialogHost({ harness, entryPoint, onClose, onSwitchHarness 
     return () => controller.dispose();
   }, [controller]);
 
-  const now = useRetryClock(mapped.state.state === 'cannot-connect' ? mapped.state.retryAt : undefined);
+  const now = useRetryClock(mapped.state.state === 'cannot-connect' && 'retryAt' in mapped.state ? mapped.state.retryAt : undefined);
 
   return (
     <SetupDialogView
       harness={harness}
-      facts={{ claude, claudeSettled, codex, code, codexSignInAttempted, inFlight }}
+      facts={{ claude, claudeSettled, codex, glm, code, codexSignInAttempted, inFlight }}
       strings={setupStrings()}
       onAction={(action, state, browserId) => void controller.act(action, state, browserId)}
       onCodeChange={(code) => useAgentSetupStore.getState().typeCode(code)}

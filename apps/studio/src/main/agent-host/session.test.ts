@@ -147,6 +147,7 @@ function fakeSdk(
   const sent: SDKUserMessage[] = [];
   let canUseTool: CanUseTool | undefined;
   let permissions: { ask?: string[]; deny?: string[]; allow?: string[] } | undefined;
+  let attribution: { commit?: string; pr?: string; sessionUrl?: boolean } | undefined;
   let preToolUse: PreToolUse | undefined;
   let sessionStart: ((input: { transcript_path?: string }) => Promise<unknown>) | undefined;
   let studioServer: McpSdkServerConfigWithInstance | undefined;
@@ -160,7 +161,7 @@ function fakeSdk(
     prompt: AsyncIterable<SDKUserMessage>;
     options: {
       canUseTool: CanUseTool;
-      settings?: { permissions?: { ask?: string[]; deny?: string[]; allow?: string[] } };
+      settings?: { permissions?: { ask?: string[]; deny?: string[]; allow?: string[] }; attribution?: { commit?: string; pr?: string; sessionUrl?: boolean } };
       hooks?: { PreToolUse?: { hooks: PreToolUse[] }[]; SessionStart?: { hooks: ((input: { transcript_path?: string }) => Promise<unknown>)[] }[] };
       model?: unknown;
       settingSources?: string[];
@@ -176,6 +177,7 @@ function fakeSdk(
     projectOptions = { systemPrompt: args.options.systemPrompt, agents: args.options.agents };
     canUseTool = args.options.canUseTool;
     permissions = args.options.settings?.permissions;
+    attribution = args.options.settings?.attribution;
     preToolUse = args.options.hooks?.PreToolUse?.[0]?.hooks[0];
     sessionStart = args.options.hooks?.SessionStart?.[0]?.hooks[0];
     studioServer = args.options.mcpServers?.[STUDIO_MCP_SERVER];
@@ -245,6 +247,9 @@ function fakeSdk(
     },
     get permissions() {
       return permissions;
+    },
+    get attribution() {
+      return attribution;
     },
     push(...messages: unknown[]): void {
       feed.push(...messages);
@@ -477,6 +482,8 @@ function makeSession(
     projectSetup?: ProjectSetupToolSinks;
     onDeleteProjectFile?: import('./studio-tools.js').StudioToolSinks['onDeleteProjectFile'];
     allowRules?: readonly string[];
+    storedHarness?: import('./backend.js').SessionHarness;
+    resume?: string;
     onState?: (state: BackendState) => void;
   } = {},
 ) {
@@ -497,6 +504,8 @@ function makeSession(
     ...(options.onDeleteProjectFile === undefined ? {} : { onDeleteProjectFile: options.onDeleteProjectFile }),
     ...(options.permissionMode === undefined ? {} : { permissionMode: options.permissionMode }),
     ...(options.allowRules === undefined ? {} : { allowRules: options.allowRules }),
+    ...(options.storedHarness === undefined ? {} : { storedHarness: options.storedHarness }),
+    ...(options.resume === undefined ? {} : { resume: options.resume }),
     onAllowRules: (rules) => granted.push(rules),
     onEvent: (event) => {
       emitted.push(event);
@@ -1174,6 +1183,19 @@ describe('permission posture (ONL-2285, ONL-2190)', () => {
       'Read(**/.env)',
       'Read(**/.env.*)',
     ]);
+  });
+
+  it('a resumed GLM chat with no remembered pick asks for the shipped default, not an unknown id', () => {
+    const { sdk } = open({ storedHarness: 'glm', resume: 'res-glm-1' });
+    expect(sdk.spawnModels[0]).toBe('glm-5.3');
+  });
+
+  it('a GLM session commits with no Claude Code attribution, a Claude session keeps it', () => {
+    const glm = open({ storedHarness: 'glm' });
+    expect(glm.sdk.attribution).toEqual({ commit: '', pr: '', sessionUrl: false });
+
+    const claude = open();
+    expect(claude.sdk.attribution).toBeUndefined();
   });
 
   it('carries a rule for each destructive class, including the quoted refspec spellings', () => {

@@ -3,11 +3,11 @@ import { HARNESSES } from '@studio/onboarding-ui/state';
 import { isConnected, type SetupFacts } from '../agents/mapping.js';
 
 /** A credential the boot pre-check found enables nothing until a tap (ONL-2186). */
-export function canContinue(facts: Pick<SetupFacts, 'claude' | 'codex' | 'touched'>): boolean {
+export function canContinue(facts: Pick<SetupFacts, 'claude' | 'codex' | 'glm' | 'touched'>): boolean {
   return HARNESSES.some((harness) => facts.touched[harness] && isConnected(facts, harness));
 }
 
-export function skipsDetectedSetup(facts: Pick<SetupFacts, 'claude' | 'codex' | 'touched'>, harness: HarnessId): boolean {
+export function skipsDetectedSetup(facts: Pick<SetupFacts, 'claude' | 'codex' | 'glm' | 'touched'>, harness: HarnessId): boolean {
   return !facts.touched[harness] && isConnected(facts, harness);
 }
 

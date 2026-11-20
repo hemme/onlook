@@ -35,7 +35,7 @@ import {
   type StudioEvent,
   type WelcomeProject,
 } from '@studio/events';
-import type { BackendState, ModelPick } from './backend.js';
+import type { BackendState, ModelPick, SessionHarness } from './backend.js';
 import { registerImage } from '../images/store.js';
 import { buildPromptContent, formatArtifactAttachments, resolveAttachments, splitAttachments } from './prompt-content.js';
 import { readProjectAttachment, canSendAttachedFiles } from '../images/store.js';
@@ -53,6 +53,8 @@ import { alwaysAllowGrant } from './permission-grant.js';
 import { requiresShellApproval } from './shell-approval.js';
 import { EventLog, SESSION_CLOSED, settleUndelivered } from './event-log.js';
 import { HARNESSES } from './harness.js';
+import { harnessIdOf } from './sessions.js';
+import { GLM_DEFAULT_MODEL, GLM_MODELS } from '../glm/constants.js';
 import { recordPermissionDecided, recordSetupApprovalWithheld } from './session-telemetry.js';
 import { withheldSetupTool } from '../project-setup/approval.js';
 import { retryTelemetry } from '../telemetry/retries.js';
@@ -103,6 +105,10 @@ export interface AgentSessionOptions extends Partial<CanvasToolSinks> {
   cwd: string;
   model?: string;
   effort?: EffortLevel;
+  /** Replaces the plain Claude child env when set: a provider riding the same SDK with its own endpoint and key (GLM). */
+  providerEnv?: Env;
+  /** `'claude'` unless a provider rides this SDK; keys sessions and transcripts apart from the user's Claude login. */
+  storedHarness?: SessionHarness;
   /** The project's remembered mode; absent starts on `CLAUDE_PERMISSION_MODE` (ONL-2190). */
   permissionMode?: PermissionMode;
   /** What the user already always-allowed in this project, carried into the spawn's own settings (ONL-2933). */
@@ -264,6 +270,29 @@ export const DESTRUCTIVE_GIT_RULES: readonly string[] = [
   'Bash(git reset *--hard*)',
 ];
 
+/** The `--settings` object every Claude-CLI child runs under: Studio's own permission fences, plus the CLI's
+ * commit attribution only where the harness wants it stamped — a GLM session writes no "Claude Code" trailer
+ * (the CLI injects that trailer whatever model answers behind its API). */
+export function agentSettingsFor(
+  stampsCommitTrailer: boolean,
+  allowRules: readonly string[],
+): {
+  permissions: { deny: string[]; ask: string[]; allow?: string[] };
+  attribution?: { commit: string; pr: string; sessionUrl: false };
+} {
+  return {
+    permissions: {
+      deny: ['Read(./.env)', 'Read(./.env.*)', 'Read(**/.env)', 'Read(**/.env.*)'],
+      ask: [...EXTERNALLY_VISIBLE_GIT_RULES, ...DESTRUCTIVE_GIT_RULES, 'mcp__studio__save_attachment'],
+      // Studio's own, never the project's: `settingSources` leaves out the file the CLI writes a
+      // grant to, so an always-allow would be forgotten at every spawn without this (ONL-2933).
+      ...(allowRules.length === 0 ? {} : { allow: [...allowRules] }),
+    },
+    // Object form, not `false`: the CLI docs reject bare booleans on older versions.
+    ...(stampsCommitTrailer ? {} : { attribution: { commit: '', pr: '', sessionUrl: false } }),
+  };
+}
+
 function rootStreamEvent(msg: unknown, type: string): boolean {
   const partial = msg as { type?: string; event?: { type?: string }; parent_tool_use_id?: string | null };
   return partial.type === 'stream_event' && partial.event?.type === type && partial.parent_tool_use_id == null;
@@ -294,7 +323,7 @@ interface Pending {
 
 export class AgentSession {
   readonly id = `s${Date.now().toString(36)}`;
-  readonly harness = 'claude' as const;
+  readonly harness: SessionHarness;
   readonly cwd: string;
   readonly midTurn = 'steer' as const;
 
@@ -366,6 +395,7 @@ export class AgentSession {
   constructor(options: AgentSessionOptions) {
     this.opts = options;
     this.cwd = options.cwd;
+    this.harness = options.storedHarness ?? 'claude';
     this.model = options.model;
     this.effort = options.effort;
     this.allowRules = new Set(options.allowRules ?? []);
@@ -573,7 +603,7 @@ export class AgentSession {
     const withheld =
       this.permissionMode === 'plan' ? undefined : withheldSetupTool(this.cwd, toolName);
     if (withheld !== undefined) {
-      recordSetupApprovalWithheld({ cwd: this.cwd, tool: withheld, harness: 'claude' });
+      recordSetupApprovalWithheld({ cwd: this.cwd, tool: withheld, harness: this.harness });
       // Before `parked` and the pending row: the `PreToolUse` hook already wrote this call's row (ONL-2499).
       return { behavior: 'allow', updatedInput: input };
     }
@@ -683,7 +713,7 @@ export class AgentSession {
       ...(answers === undefined ? {} : { answers }),
     });
     if (destructive !== undefined) {
-      recordPermissionDecided({ outcome, harness: 'claude', destructiveClass: destructive });
+      recordPermissionDecided({ outcome, harness: this.harness, destructiveClass: destructive });
     }
 
     if (outcome === 'deny') {
@@ -841,6 +871,11 @@ export class AgentSession {
 
   private async publishModels(): Promise<void> {
     try {
+      if (this.harness === 'glm') {
+        // Z.ai's route has no list to discover; the catalog ships with the app.
+        this.log.push({ type: 'session.settings', models: GLM_MODELS.map((m) => ({ ...m })) });
+        return;
+      }
       const models = await this.q?.supportedModels();
       if (!models) return;
       this.log.push({
@@ -987,7 +1022,7 @@ export class AgentSession {
   private start(): void {
     const project = readProjectContext(this.cwd);
     const workspaceBriefing = [briefing(this.opts.workspace, {
-      ...sessionBriefingContext('claude'),
+      ...sessionBriefingContext(harnessIdOf(this.harness)),
       ...(this.opts.starter === undefined ? {} : { starter: this.opts.starter }),
     }), project.instructions].filter(Boolean).join('\n\n');
     const allowRules = [...this.allowRules];
@@ -1000,14 +1035,18 @@ export class AgentSession {
         cwd: this.cwd,
         pathToClaudeCodeExecutable: claudeExecutablePath(),
         // REPLACES the child env, no merge with `process.env`; `pinClaudeConfigDir` keeps a driven run's store scratch, not its login.
-        env: claudeChildSdkEnv(),
+        env: this.opts.providerEnv ?? claudeChildSdkEnv(),
         // Verbatim, no alias table. An explicit `model` OVERRIDES the one a resume restores; with no choice, `'default'` moves a resume off the model it was started on, which an SDK bump retires (ONL-2435).
         ...(resume === undefined
           ? {
-              model: this.model ?? DEFAULT_MODEL,
+              // A remembered pick from an older catalog (or an unknown id) would 400 on Z.ai; the shipped catalog decides.
+              model: this.harness === 'glm'
+                ? (GLM_MODELS.some((choice) => choice.value === this.model) ? this.model! : GLM_DEFAULT_MODEL)
+                : (this.model ?? DEFAULT_MODEL),
               ...(this.opts.sessionId === undefined ? {} : { sessionId: this.opts.sessionId }),
             }
-          : { resume, model: this.model ?? 'default' }),
+          // A resumed GLM chat with no remembered pick cannot ask the route for `'default'` — an unknown model there is a 400.
+          : { resume, model: this.model ?? (this.harness === 'glm' ? GLM_DEFAULT_MODEL : 'default') }),
         // Required for token-level deltas.
         includePartialMessages: true,
         // A classifier, not a bypass: under `bypassPermissions` the SDK approves everything before `canUseTool` is reached, which is why the destructive gate rides the hook instead (ONL-2190).
@@ -1048,15 +1087,7 @@ export class AgentSession {
         strictMcpConfig: !flagOn('connectors'),
         ...(Object.keys(project.agents).length === 0 ? {} : { agents: project.agents }),
         // A `Read` deny also blocks `cat`/`head`/`grep` on the path, and nothing more: `sh -c "cat .env"` still reads it; a boundary needs `sandbox.enabled` (ONL-1921).
-        settings: {
-          permissions: {
-            deny: ['Read(./.env)', 'Read(./.env.*)', 'Read(**/.env)', 'Read(**/.env.*)'],
-            ask: [...EXTERNALLY_VISIBLE_GIT_RULES, ...DESTRUCTIVE_GIT_RULES, 'mcp__studio__save_attachment'],
-            // Studio's own, never the project's: `settingSources` leaves out the file the CLI writes a
-            // grant to, so an always-allow would be forgotten at every spawn without this (ONL-2933).
-            ...(allowRules.length === 0 ? {} : { allow: allowRules }),
-          },
-        },
+        settings: agentSettingsFor(HARNESSES[harnessIdOf(this.harness)].commitAttribution, allowRules),
         // Model-facing, never rendered, so not a `strings.ts` key.
         systemPrompt: {
           type: 'preset',
@@ -1194,7 +1225,7 @@ export class AgentSession {
       this.opts.onError?.(code, null);
       // The composer stays connected, so its Retry can send (ONL-2196).
       if (code !== 'unknown') {
-        this.opts.onConnection({ status: classifyError(message), detail: message, harness: 'claude' });
+        this.opts.onConnection({ status: classifyError(message), detail: message, harness: harnessIdOf(this.harness) });
       }
     } finally {
       this.connectors?.close();

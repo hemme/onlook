@@ -6,11 +6,13 @@ import { primeSettings, resetSettingsPrimeForTests, useSettingsStore } from './s
 const DEFAULTS: SettingsDefaults = {
   claude: { model: 'opus', effort: 'high', models: [{ value: 'opus', displayName: 'Claude Opus', supportedEffortLevels: ['low', 'high'] }] },
   codex: { models: [{ value: 'gpt-5.6', displayName: 'gpt-5.6' }] },
+  glm: { models: [{ value: 'glm-5.3', displayName: 'GLM-5.3 Max' }] },
 };
 
 const OTHER_DEFAULTS: SettingsDefaults = {
   claude: { model: 'haiku', models: [{ value: 'haiku', displayName: 'Claude Haiku' }] },
   codex: { models: [] },
+  glm: { models: [] },
 };
 
 const logged: RendererLogLine[] = [];
@@ -523,11 +525,11 @@ describe('defaults', () => {
     await bridge.releaseRead({});
     await primed;
 
-    expect(useSettingsStore.getState().defaults).toEqual({ claude: { models: [] }, codex: { models: [] } });
+    expect(useSettingsStore.getState().defaults).toEqual({ claude: { models: [] }, codex: { models: [] }, glm: { models: [] } });
   });
 
   it('a settings:changed broadcast re-reads them — a catalog write carries nothing in its payload', async () => {
-    bridge.defaultsAnswer({ claude: { models: [] }, codex: { models: [] } });
+    bridge.defaultsAnswer({ claude: { models: [] }, codex: { models: [] }, glm: { models: [] } });
     const primed = primeSettings();
     await bridge.releaseRead({});
     await primed;
@@ -560,6 +562,6 @@ describe('setDefault', () => {
     await useSettingsStore.getState().setDefault('claude', { model: 'opus' });
 
     expect(bridge.patches()).toEqual([{ harness: 'claude', model: 'opus' }]);
-    expect(useSettingsStore.getState().defaults).toEqual({ claude: { models: [] }, codex: { models: [] } });
+    expect(useSettingsStore.getState().defaults).toEqual({ claude: { models: [] }, codex: { models: [] }, glm: { models: [] } });
   });
 });
